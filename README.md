@@ -6,3 +6,4 @@ traP春ハッカソン2026 3班
 - @cp20
 - @renkon
 - @Ayuto1123
+- @msk
