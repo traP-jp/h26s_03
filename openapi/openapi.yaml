@@ -1,0 +1,81 @@
+openapi: 3.0.0
+info:
+  title: h26s_03 API
+  version: 0.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/initialize:
+    post:
+      operationId: initialize
+      summary: データベースを初期化する
+      description: 開発用に既存データを削除し、サンプルデータを入れ直します。
+      responses:
+        '204':
+          description: 初期化に成功しました。
+  /api/tasks:
+    get:
+      operationId: getTasks
+      summary: タスク一覧を取得する
+      description: 登録されているタスクの一覧を取得します。
+      responses:
+        '200':
+          description: タスク一覧の取得に成功しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TasksResponse'
+    post:
+      operationId: createTask
+      summary: タスクを作成する
+      description: 新しいタスクを作成します。
+      requestBody:
+        required: true
+        description: 作成するタスクの内容です。
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: タスクの作成に成功しました。
+components:
+  schemas:
+    Task:
+      type: object
+      description: タスク1件分の情報です。
+      required:
+        - id
+        - title
+        - status
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: タスクIDです。
+        title:
+          type: string
+          description: タスク名です。
+        status:
+          type: string
+          description: タスクの状態です。
+    TasksResponse:
+      type: object
+      description: タスク一覧のレスポンスです。
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          description: タスクの配列です。
+          items:
+            $ref: '#/components/schemas/Task'
+    CreateTaskRequest:
+      type: object
+      description: タスク作成時に送る内容です。
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: 作成するタスク名です。

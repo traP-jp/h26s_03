@@ -1,0 +1,32 @@
+{
+  "name": "client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "openapi-typescript ../openapi/openapi.yaml -o src/gen/api-types.ts && oxfmt src/gen/api-types.ts",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint . --deny-warnings",
+    "dev": "vp dev",
+    "build": "vue-tsc --noEmit && vp build",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0",
+    "vue": "3.5.38",
+    "vue-router": "5.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.7",
+    "openapi-typescript": "7.13.0",
+    "oxfmt": "0.55.0",
+    "oxlint": "1.70.0",
+    "oxlint-tsgolint": "0.23.0",
+    "typescript": "6.0.3",
+    "vite": "8.0.16",
+    "vite-plus": "0.2.1",
+    "vue-tsc": "3.3.5"
+  },
+  "packageManager": "pnpm@10.34.4"
+}

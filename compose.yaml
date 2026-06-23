@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: h26s-03-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uapp", "-papp"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server-dev
+    container_name: h26s-03-server
+    working_dir: /workspace/server
+    command: ["air", "-c", ".air.toml"]
+    environment:
+      API_ADDR: ":8080"
+      DB_DSN: app:app@tcp(mysql:3306)/app?parseTime=true&multiStatements=true
+      AUTH_MODE: SOFT
+      ASSETS_DIR: ""
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/workspace
+
+  client:
+    profiles: ["fullstack"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: client-dev
+    container_name: h26s-03-client
+    working_dir: /workspace/client
+    environment:
+      VITE_API_BASE: http://localhost:8080
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm install --frozen-lockfile && pnpm run codegen && pnpm dev --host 0.0.0.0",
+      ]
+    depends_on:
+      - server
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/workspace
+
+volumes:
+  mysql_data:
