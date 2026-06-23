@@ -1,0 +1,72 @@
+[tools]
+node = "24"
+pnpm = "10"
+go = "1.25.0"
+
+[tasks.setup]
+description = "初回セットアップや依存関係を入れ直したいときに使う。フロントエンド依存とVS Code用のGo整形ツールを入れる"
+run = '''
+pnpm --dir client install
+mkdir -p .tools/bin
+GOBIN="$PWD/.tools/bin" go install golang.org/x/tools/cmd/goimports@latest
+'''
+
+[tasks.client]
+description = "フロントエンドだけを開発中に起動したいときに使う"
+run = "pnpm --dir client dev"
+
+[tasks.server]
+description = "バックエンドとMySQLだけをDockerで起動したいときに使う"
+run = "docker compose up --build server"
+
+[tasks.dev]
+description = "普段の開発開始時に使う。フロントエンド、バックエンド、MySQLをまとめて起動する"
+run = [{ tasks = ["server", "client"] }]
+
+[tasks.dev-full]
+description = "フロントエンドも含めて全部Dockerで起動したいときに使う"
+run = "docker compose --profile fullstack up --build"
+
+[tasks.dev-down]
+description = "開発を終えるときにDockerで起動したサービスを止める"
+run = "docker compose down"
+
+[tasks.migrate-up]
+description = "データベースのテーブル定義を最新に反映したいときに使う"
+run = "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' up"
+
+[tasks.migrate-down]
+description = "直前のデータベース変更を1つ戻したいときに使う"
+run = "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' down 1"
+
+[tasks.codegen]
+description = "API仕様書を変更したあと、フロントエンドとバックエンドの生成コードを更新する"
+run = "pnpm --dir client run codegen && cd server && go generate ./..."
+
+[tasks.client-fmt]
+description = "フロントエンドのコードを自動整形したいときに使う"
+run = "pnpm --dir client run fmt"
+
+[tasks.client-fmt-check]
+description = "フロントエンドのコード整形が済んでいるか確認したいときに使う"
+run = "pnpm --dir client run fmt:check"
+
+[tasks.client-lint]
+description = "フロントエンドの書き方に問題がないか確認したいときに使う"
+run = "pnpm --dir client run lint"
+
+[tasks.client-typecheck]
+description = "フロントエンドの型エラーを確認したいときに使う"
+run = "pnpm --dir client exec vue-tsc --noEmit"
+
+[tasks.client-build]
+description = "フロントエンドが本番用にビルドできるか確認したいときに使う"
+run = "pnpm --dir client run build"
+
+[tasks.server-build]
+description = "バックエンドがビルドできるか確認したいときに使う"
+run = "cd server && go build ./..."
+
+[tasks.server-test]
+description = "バックエンドのテストを実行したいときに使う"
+run = "cd server && go test ./... -v"

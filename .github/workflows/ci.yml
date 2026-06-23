@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  client-codegen-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: mise exec -- pnpm --dir client install --frozen-lockfile
+
+      - name: Generate API code (client + server)
+        run: |
+          mise exec -- pnpm --dir client run codegen
+          mise exec -- go -C server generate ./...
+
+      - name: Check generated diff
+        run: git diff --exit-code -- client/src/gen/api-types.ts server/internal/gen/openapi
+
+  client-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: mise exec -- pnpm --dir client install --frozen-lockfile
+
+      - name: Format check
+        run: mise exec -- pnpm --dir client run fmt:check
+
+  client-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: mise exec -- pnpm --dir client install --frozen-lockfile
+
+      - name: Lint
+        run: mise exec -- pnpm --dir client run lint
+
+  client-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: mise exec -- pnpm --dir client install --frozen-lockfile
+
+      - name: Type check
+        run: mise exec -- pnpm --dir client exec vue-tsc --noEmit
+
+  client-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: mise exec -- pnpm --dir client install --frozen-lockfile
+
+      - name: Build check
+        run: mise exec -- pnpm --dir client run build
+
+  server-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Download dependencies
+        run: mise exec -- go -C server mod download
+
+      - name: Build
+        run: mise exec -- go -C server build ./...
+
+  server-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+
+      - name: Download dependencies
+        run: mise exec -- go -C server mod download
+
+      - name: Test
+        run: mise exec -- go -C server test ./... -v
