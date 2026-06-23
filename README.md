@@ -60,7 +60,9 @@ mise run dev-down
 - 新しいエンドポイントを追加したい時
   - `server/internal/handlers`
 - データベースの定義を変えたい時
-  - TODO
+  - `server/migrations` に migration SQL を追加・編集する
+  - ローカル DB に反映するときは `mise run migrate-up` を実行する
+  - 1 つ戻したいときは `mise run migrate-down` を実行する
 
 ## API を変更するとき
 
