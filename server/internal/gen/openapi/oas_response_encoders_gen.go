@@ -16,20 +16,7 @@ func encodeCreateTaskResponse(response *CreateTaskCreated, w http.ResponseWriter
 	return nil
 }
 
-func encodeGetFeedResponse(response *FeedResponse, w http.ResponseWriter, span trace.Span) error {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(200)
-
-	e := new(jx.Encoder)
-	response.Encode(e)
-	if _, err := e.WriteTo(w); err != nil {
-		return errors.Wrap(err, "write")
-	}
-
-	return nil
-}
-
-func encodeGetMembersResponse(response *MembersResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeGetTasksResponse(response *TasksResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 

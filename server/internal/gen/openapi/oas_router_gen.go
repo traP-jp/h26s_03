@@ -66,31 +66,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'f': // Prefix: "feed"
-
-				if l := len("feed"); len(elem) >= l && elem[0:l] == "feed" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					// Leaf node.
-					switch r.Method {
-					case "GET":
-						s.handleGetFeedRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
-							acceptPatch:    "",
-						})
-					}
-
-					return
-				}
-
 			case 'i': // Prefix: "initialize"
 
 				if l := len("initialize"); len(elem) >= l && elem[0:l] == "initialize" {
@@ -116,31 +91,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-			case 'm': // Prefix: "members"
-
-				if l := len("members"); len(elem) >= l && elem[0:l] == "members" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					// Leaf node.
-					switch r.Method {
-					case "GET":
-						s.handleGetMembersRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
-							acceptPatch:    "",
-						})
-					}
-
-					return
-				}
-
 			case 't': // Prefix: "tasks"
 
 				if l := len("tasks"); len(elem) >= l && elem[0:l] == "tasks" {
@@ -152,11 +102,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if len(elem) == 0 {
 					// Leaf node.
 					switch r.Method {
+					case "GET":
+						s.handleGetTasksRequest([0]string{}, elemIsEscaped, w, r)
 					case "POST":
 						s.handleCreateTaskRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "POST",
+							allowedMethods: "GET,POST",
 							allowedHeaders: rn1AllowedHeaders,
 							acceptPost:     "application/json",
 							acceptPatch:    "",
@@ -266,31 +218,6 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'f': // Prefix: "feed"
-
-				if l := len("feed"); len(elem) >= l && elem[0:l] == "feed" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					// Leaf node.
-					switch method {
-					case "GET":
-						r.name = GetFeedOperation
-						r.summary = "フィード一覧を取得する"
-						r.operationID = "getFeed"
-						r.operationGroup = ""
-						r.pathPattern = "/api/feed"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
-					}
-				}
-
 			case 'i': // Prefix: "initialize"
 
 				if l := len("initialize"); len(elem) >= l && elem[0:l] == "initialize" {
@@ -316,31 +243,6 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 				}
 
-			case 'm': // Prefix: "members"
-
-				if l := len("members"); len(elem) >= l && elem[0:l] == "members" {
-					elem = elem[l:]
-				} else {
-					break
-				}
-
-				if len(elem) == 0 {
-					// Leaf node.
-					switch method {
-					case "GET":
-						r.name = GetMembersOperation
-						r.summary = "メンバー一覧を取得する"
-						r.operationID = "getMembers"
-						r.operationGroup = ""
-						r.pathPattern = "/api/members"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
-					}
-				}
-
 			case 't': // Prefix: "tasks"
 
 				if l := len("tasks"); len(elem) >= l && elem[0:l] == "tasks" {
@@ -352,6 +254,15 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				if len(elem) == 0 {
 					// Leaf node.
 					switch method {
+					case "GET":
+						r.name = GetTasksOperation
+						r.summary = "タスク一覧を取得する"
+						r.operationID = "getTasks"
+						r.operationGroup = ""
+						r.pathPattern = "/api/tasks"
+						r.args = args
+						r.count = 0
+						return r, true
 					case "POST":
 						r.name = CreateTaskOperation
 						r.summary = "タスクを作成する"

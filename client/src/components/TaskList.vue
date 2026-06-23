@@ -1,20 +1,20 @@
 <template>
   <ul class="list">
-    <li v-for="item in items" :key="item.task_id" class="card">
-      <p class="card-title">{{ item.task_title }}</p>
+    <li v-for="task in tasks" :key="task.id" class="card">
+      <p class="card-title">{{ task.title }}</p>
       <p class="meta">
-        Project: {{ item.project_name }} / Owner: {{ item.owner_name }} /
-        <span class="badge">{{ item.task_status }}</span>
+        id: {{ task.id }} /
+        <span class="badge">{{ task.status }}</span>
       </p>
     </li>
   </ul>
 </template>
 
 <script setup lang="ts">
-import type { FeedItem } from "../lib/api";
+import type { Task } from "../lib/api";
 
 defineProps<{
-  items: FeedItem[];
+  tasks: Task[];
 }>();
 </script>
 

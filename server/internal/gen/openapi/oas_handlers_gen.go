@@ -35,7 +35,7 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 
 // handleCreateTaskRequest handles createTask operation.
 //
-// 指定したメンバーを担当者として、新しいタスクを作成します。.
+// 新しいタスクを作成します。.
 //
 // POST /api/tasks
 func (s *Server) handleCreateTaskRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -176,24 +176,24 @@ func (s *Server) handleCreateTaskRequest(args [0]string, argsEscaped bool, w htt
 	}
 }
 
-// handleGetFeedRequest handles getFeed operation.
+// handleGetTasksRequest handles getTasks operation.
 //
-// プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。.
+// 登録されているタスクの一覧を取得します。.
 //
-// GET /api/feed
-func (s *Server) handleGetFeedRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /api/tasks
+func (s *Server) handleGetTasksRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getFeed"),
+		otelogen.OperationID("getTasks"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/api/feed"),
+		semconv.HTTPRouteKey.String("/api/tasks"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetFeedOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetTasksOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -251,13 +251,13 @@ func (s *Server) handleGetFeedRequest(args [0]string, argsEscaped bool, w http.R
 
 	var rawBody []byte
 
-	var response *FeedResponse
+	var response *TasksResponse
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    GetFeedOperation,
-			OperationSummary: "フィード一覧を取得する",
-			OperationID:      "getFeed",
+			OperationName:    GetTasksOperation,
+			OperationSummary: "タスク一覧を取得する",
+			OperationID:      "getTasks",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -267,7 +267,7 @@ func (s *Server) handleGetFeedRequest(args [0]string, argsEscaped bool, w http.R
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *FeedResponse
+			Response = *TasksResponse
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -278,12 +278,12 @@ func (s *Server) handleGetFeedRequest(args [0]string, argsEscaped bool, w http.R
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetFeed(ctx)
+				response, err = s.h.GetTasks(ctx)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetFeed(ctx)
+		response, err = s.h.GetTasks(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -291,131 +291,7 @@ func (s *Server) handleGetFeedRequest(args [0]string, argsEscaped bool, w http.R
 		return
 	}
 
-	if err := encodeGetFeedResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetMembersRequest handles getMembers operation.
-//
-// 登録されているメンバーの一覧を取得します。.
-//
-// GET /api/members
-func (s *Server) handleGetMembersRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getMembers"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/api/members"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetMembersOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(attrs...)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err error
-	)
-
-	var rawBody []byte
-
-	var response *MembersResponse
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GetMembersOperation,
-			OperationSummary: "メンバー一覧を取得する",
-			OperationID:      "getMembers",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = struct{}
-			Response = *MembersResponse
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetMembers(ctx)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GetMembers(ctx)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGetMembersResponse(response, w, span); err != nil {
+	if err := encodeGetTasksResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)

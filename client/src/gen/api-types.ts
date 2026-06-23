@@ -24,46 +24,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/feed": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * フィード一覧を取得する
-     * @description プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。
-     */
-    get: operations["getFeed"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/members": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * メンバー一覧を取得する
-     * @description 登録されているメンバーの一覧を取得します。
-     */
-    get: operations["getMembers"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/tasks": {
     parameters: {
       query?: never;
@@ -71,11 +31,15 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * タスク一覧を取得する
+     * @description 登録されているタスクの一覧を取得します。
+     */
+    get: operations["getTasks"];
     put?: never;
     /**
      * タスクを作成する
-     * @description 指定したメンバーを担当者として、新しいタスクを作成します。
+     * @description 新しいタスクを作成します。
      */
     post: operations["createTask"];
     delete?: never;
@@ -88,56 +52,27 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description フィードに表示する1件分の情報です。 */
-    FeedItem: {
-      /**
-       * Format: int64
-       * @description プロジェクトIDです。
-       */
-      project_id: number;
-      /** @description プロジェクト名です。 */
-      project_name: string;
-      /** @description プロジェクトの所有者名です。 */
-      owner_name: string;
+    /** @description タスク1件分の情報です。 */
+    Task: {
       /**
        * Format: int64
        * @description タスクIDです。
        */
-      task_id: number;
-      /** @description タスク名です。 */
-      task_title: string;
-      /** @description タスクの状態です。 */
-      task_status: string;
-    };
-    /** @description フィード一覧のレスポンスです。 */
-    FeedResponse: {
-      /** @description フィードに表示するデータの配列です。 */
-      data: components["schemas"]["FeedItem"][];
-    };
-    /** @description メンバー1人分の情報です。 */
-    Member: {
-      /**
-       * Format: int64
-       * @description メンバーIDです。
-       */
       id: number;
-      /** @description メンバー名です。 */
-      name: string;
+      /** @description タスク名です。 */
+      title: string;
+      /** @description タスクの状態です。 */
+      status: string;
     };
-    /** @description メンバー一覧のレスポンスです。 */
-    MembersResponse: {
-      /** @description メンバーの配列です。 */
-      data: components["schemas"]["Member"][];
+    /** @description タスク一覧のレスポンスです。 */
+    TasksResponse: {
+      /** @description タスクの配列です。 */
+      data: components["schemas"]["Task"][];
     };
     /** @description タスク作成時に送る内容です。 */
     CreateTaskRequest: {
       /** @description 作成するタスク名です。 */
       title: string;
-      /**
-       * Format: int64
-       * @description 担当者にするメンバーIDです。
-       */
-      member_id: number;
     };
   };
   responses: never;
@@ -166,7 +101,7 @@ export interface operations {
       };
     };
   };
-  getFeed: {
+  getTasks: {
     parameters: {
       query?: never;
       header?: never;
@@ -175,33 +110,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description フィード一覧の取得に成功しました。 */
+      /** @description タスク一覧の取得に成功しました。 */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FeedResponse"];
-        };
-      };
-    };
-  };
-  getMembers: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description メンバー一覧の取得に成功しました。 */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["MembersResponse"];
+          "application/json": components["schemas"]["TasksResponse"];
         };
       };
     };

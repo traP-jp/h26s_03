@@ -29,22 +29,16 @@ func trimTrailingSlashes(u *url.URL) {
 type Invoker interface {
 	// CreateTask invokes createTask operation.
 	//
-	// 指定したメンバーを担当者として、新しいタスクを作成します。.
+	// 新しいタスクを作成します。.
 	//
 	// POST /api/tasks
 	CreateTask(ctx context.Context, request *CreateTaskRequest) error
-	// GetFeed invokes getFeed operation.
+	// GetTasks invokes getTasks operation.
 	//
-	// プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。.
+	// 登録されているタスクの一覧を取得します。.
 	//
-	// GET /api/feed
-	GetFeed(ctx context.Context) (*FeedResponse, error)
-	// GetMembers invokes getMembers operation.
-	//
-	// 登録されているメンバーの一覧を取得します。.
-	//
-	// GET /api/members
-	GetMembers(ctx context.Context) (*MembersResponse, error)
+	// GET /api/tasks
+	GetTasks(ctx context.Context) (*TasksResponse, error)
 	// Initialize invokes initialize operation.
 	//
 	// 開発用に既存データを削除し、サンプルデータを入れ直します。.
@@ -94,7 +88,7 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 
 // CreateTask invokes createTask operation.
 //
-// 指定したメンバーを担当者として、新しいタスクを作成します。.
+// 新しいタスクを作成します。.
 //
 // POST /api/tasks
 func (c *Client) CreateTask(ctx context.Context, request *CreateTaskRequest) error {
@@ -175,21 +169,21 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	return result, nil
 }
 
-// GetFeed invokes getFeed operation.
+// GetTasks invokes getTasks operation.
 //
-// プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。.
+// 登録されているタスクの一覧を取得します。.
 //
-// GET /api/feed
-func (c *Client) GetFeed(ctx context.Context) (*FeedResponse, error) {
-	res, err := c.sendGetFeed(ctx)
+// GET /api/tasks
+func (c *Client) GetTasks(ctx context.Context) (*TasksResponse, error) {
+	res, err := c.sendGetTasks(ctx)
 	return res, err
 }
 
-func (c *Client) sendGetFeed(ctx context.Context) (res *FeedResponse, err error) {
+func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getFeed"),
+		otelogen.OperationID("getTasks"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/api/feed"),
+		semconv.URLTemplateKey.String("/api/tasks"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -205,7 +199,7 @@ func (c *Client) sendGetFeed(ctx context.Context) (res *FeedResponse, err error)
 	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
 
 	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, GetFeedOperation,
+	ctx, span := c.cfg.Tracer.Start(ctx, GetTasksOperation,
 		trace.WithAttributes(otelAttrs...),
 		clientSpanKind,
 	)
@@ -223,7 +217,7 @@ func (c *Client) sendGetFeed(ctx context.Context) (res *FeedResponse, err error)
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
-	pathParts[0] = "/api/feed"
+	pathParts[0] = "/api/tasks"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -247,87 +241,7 @@ func (c *Client) sendGetFeed(ctx context.Context) (res *FeedResponse, err error)
 	}()
 
 	stage = "DecodeResponse"
-	result, err := decodeGetFeedResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
-// GetMembers invokes getMembers operation.
-//
-// 登録されているメンバーの一覧を取得します。.
-//
-// GET /api/members
-func (c *Client) GetMembers(ctx context.Context) (*MembersResponse, error) {
-	res, err := c.sendGetMembers(ctx)
-	return res, err
-}
-
-func (c *Client) sendGetMembers(ctx context.Context) (res *MembersResponse, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getMembers"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/api/members"),
-	}
-	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, GetMembersOperation,
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/api/members"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "GET", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	body := resp.Body
-	defer func() {
-		// Drain the body to EOF before closing, so the underlying
-		// connection can be reused by the Transport regardless of the
-		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
-		_, _ = io.Copy(io.Discard, body)
-		_ = body.Close()
-	}()
-
-	stage = "DecodeResponse"
-	result, err := decodeGetMembersResponse(resp)
+	result, err := decodeGetTasksResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

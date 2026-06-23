@@ -39,16 +39,12 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioInitializeSeedsExpectedRecords,
 		},
 		{
-			name: "create task adds new feed item",
-			run:  scenarioCreateTaskAddsFeedItem,
+			name: "create task adds new task",
+			run:  scenarioCreateTaskAddsTask,
 		},
 		{
 			name: "create task validates required fields",
 			run:  scenarioCreateTaskValidatesRequiredFields,
-		},
-		{
-			name: "create task with unknown member fails",
-			run:  scenarioCreateTaskUnknownMemberFails,
 		},
 	}
 
@@ -72,8 +68,7 @@ func startTestServer(t *testing.T) string {
 	e := echo.New()
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/feed", h.GetFeedEcho)
-	e.GET("/api/members", h.GetMembersEcho)
+	e.GET("/api/tasks", h.GetTasksEcho)
 	e.POST("/api/tasks", h.CreateTaskEcho)
 
 	srv := httptest.NewServer(e)
@@ -87,44 +82,38 @@ func scenarioInitializeSeedsExpectedRecords(t *testing.T, baseURL string) {
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 
-	feed := fetchFeed(t, baseURL+"/api/feed")
-	if got, want := len(feed.Data), 3; got != want {
-		t.Fatalf("unexpected feed length: got=%d want=%d", got, want)
-	}
-
-	members := fetchMembers(t, baseURL+"/api/members")
-	if got, want := len(members.Data), 3; got != want {
-		t.Fatalf("unexpected members length: got=%d want=%d", got, want)
+	tasks := fetchTasks(t, baseURL+"/api/tasks")
+	if got, want := len(tasks.Data), 3; got != want {
+		t.Fatalf("unexpected tasks length: got=%d want=%d", got, want)
 	}
 }
 
-func scenarioCreateTaskAddsFeedItem(t *testing.T, baseURL string) {
+func scenarioCreateTaskAddsTask(t *testing.T, baseURL string) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 
 	createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{
-		"title":     "Testcontainers task",
-		"member_id": 1,
+		"title": "Testcontainers task",
 	}, http.StatusCreated)
 
-	feed := fetchFeed(t, baseURL+"/api/feed")
-	if got, want := len(feed.Data), 4; got != want {
-		t.Fatalf("unexpected feed length after create: got=%d want=%d", got, want)
+	tasks := fetchTasks(t, baseURL+"/api/tasks")
+	if got, want := len(tasks.Data), 4; got != want {
+		t.Fatalf("unexpected tasks length after create: got=%d want=%d", got, want)
 	}
 
 	var found bool
-	for _, item := range feed.Data {
-		if item.TaskTitle == "Testcontainers task" {
+	for _, task := range tasks.Data {
+		if task.Title == "Testcontainers task" {
 			found = true
-			if item.TaskStatus != "todo" {
-				t.Fatalf("unexpected created task status: got=%s", item.TaskStatus)
+			if task.Status != "todo" {
+				t.Fatalf("unexpected created task status: got=%s", task.Status)
 			}
 			break
 		}
 	}
 	if !found {
-		t.Fatalf("created task not found in feed")
+		t.Fatalf("created task not found")
 	}
 }
 
@@ -133,24 +122,11 @@ func scenarioCreateTaskValidatesRequiredFields(t *testing.T, baseURL string) {
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 
-	body := createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{
-		"member_id": 1,
-	}, http.StatusBadRequest)
+	body := createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{}, http.StatusBadRequest)
 
-	if !strings.Contains(body, "title and member_id are required") {
+	if !strings.Contains(body, "title is required") {
 		t.Fatalf("unexpected validation message: %s", body)
 	}
-}
-
-func scenarioCreateTaskUnknownMemberFails(t *testing.T, baseURL string) {
-	t.Helper()
-
-	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-
-	createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{
-		"title":     "No member",
-		"member_id": 99999,
-	}, http.StatusInternalServerError)
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
@@ -260,11 +236,11 @@ func mustRequestNoBody(t *testing.T, method, url string, expectedStatus int) {
 	}
 }
 
-type feedResponse struct {
+type tasksResponse struct {
 	Data []struct {
-		TaskID     int64  `json:"task_id"`
-		TaskTitle  string `json:"task_title"`
-		TaskStatus string `json:"task_status"`
+		ID     int64  `json:"id"`
+		Title  string `json:"title"`
+		Status string `json:"status"`
 	} `json:"data"`
 }
 
@@ -296,50 +272,23 @@ func createTaskAndExpectStatus(t *testing.T, url string, payload map[string]any,
 	return string(raw)
 }
 
-func fetchFeed(t *testing.T, url string) feedResponse {
+func fetchTasks(t *testing.T, url string) tasksResponse {
 	t.Helper()
 
 	resp, err := http.Get(url)
 	if err != nil {
-		t.Fatalf("get feed: %v", err)
+		t.Fatalf("get tasks: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected feed status: %d body=%s", resp.StatusCode, string(raw))
+		t.Fatalf("unexpected tasks status: %d body=%s", resp.StatusCode, string(raw))
 	}
 
-	var out feedResponse
+	var out tasksResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		t.Fatalf("decode feed: %v", err)
-	}
-	return out
-}
-
-type membersResponse struct {
-	Data []struct {
-		ID int64 `json:"id"`
-	} `json:"data"`
-}
-
-func fetchMembers(t *testing.T, url string) membersResponse {
-	t.Helper()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		t.Fatalf("get members: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected members status: %d body=%s", resp.StatusCode, string(raw))
-	}
-
-	var out membersResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		t.Fatalf("decode members: %v", err)
+		t.Fatalf("decode tasks: %v", err)
 	}
 	return out
 }

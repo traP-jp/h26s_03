@@ -10,22 +10,16 @@ import (
 type Handler interface {
 	// CreateTask implements createTask operation.
 	//
-	// 指定したメンバーを担当者として、新しいタスクを作成します。.
+	// 新しいタスクを作成します。.
 	//
 	// POST /api/tasks
 	CreateTask(ctx context.Context, req *CreateTaskRequest) error
-	// GetFeed implements getFeed operation.
+	// GetTasks implements getTasks operation.
 	//
-	// プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。.
+	// 登録されているタスクの一覧を取得します。.
 	//
-	// GET /api/feed
-	GetFeed(ctx context.Context) (*FeedResponse, error)
-	// GetMembers implements getMembers operation.
-	//
-	// 登録されているメンバーの一覧を取得します。.
-	//
-	// GET /api/members
-	GetMembers(ctx context.Context) (*MembersResponse, error)
+	// GET /api/tasks
+	GetTasks(ctx context.Context) (*TasksResponse, error)
 	// Initialize implements initialize operation.
 	//
 	// 開発用に既存データを削除し、サンプルデータを入れ直します。.

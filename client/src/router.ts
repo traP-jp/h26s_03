@@ -4,14 +4,14 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: "/todo",
+      name: "todo",
+      component: () => import("./views/TodoView.vue"),
+    },
+    {
       path: "/",
       name: "dashboard",
       component: () => import("./views/DashboardView.vue"),
-    },
-    {
-      path: "/members",
-      name: "members",
-      component: () => import("./views/MembersView.vue"),
     },
   ],
 });

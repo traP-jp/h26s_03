@@ -15,28 +15,19 @@ var _ Handler = UnimplementedHandler{}
 
 // CreateTask implements createTask operation.
 //
-// 指定したメンバーを担当者として、新しいタスクを作成します。.
+// 新しいタスクを作成します。.
 //
 // POST /api/tasks
 func (UnimplementedHandler) CreateTask(ctx context.Context, req *CreateTaskRequest) error {
 	return ht.ErrNotImplemented
 }
 
-// GetFeed implements getFeed operation.
+// GetTasks implements getTasks operation.
 //
-// プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。.
+// 登録されているタスクの一覧を取得します。.
 //
-// GET /api/feed
-func (UnimplementedHandler) GetFeed(ctx context.Context) (r *FeedResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetMembers implements getMembers operation.
-//
-// 登録されているメンバーの一覧を取得します。.
-//
-// GET /api/members
-func (UnimplementedHandler) GetMembers(ctx context.Context) (r *MembersResponse, _ error) {
+// GET /api/tasks
+func (UnimplementedHandler) GetTasks(ctx context.Context) (r *TasksResponse, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

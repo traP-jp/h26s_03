@@ -4,8 +4,7 @@ import createClient from "openapi-fetch";
 
 import type { components, paths } from "../gen/api-types";
 
-export type FeedItem = components["schemas"]["FeedItem"];
-export type Member = components["schemas"]["Member"];
+export type Task = components["schemas"]["Task"];
 
 const client = createClient<paths>({
   baseUrl: apiBase,
@@ -25,25 +24,17 @@ export async function initializeData(): Promise<void> {
   }
 }
 
-export async function getFeed(): Promise<FeedItem[]> {
-  const { data, error } = await client.GET("/api/feed");
+export async function getTasks(): Promise<Task[]> {
+  const { data, error } = await client.GET("/api/tasks");
   if (error || !data) {
     raiseApiError(error);
   }
   return data.data;
 }
 
-export async function getMembers(): Promise<Member[]> {
-  const { data, error } = await client.GET("/api/members");
-  if (error || !data) {
-    raiseApiError(error);
-  }
-  return data.data;
-}
-
-export async function addTask(title: string, memberId: number): Promise<void> {
+export async function addTask(title: string): Promise<void> {
   const { error } = await client.POST("/api/tasks", {
-    body: { title, member_id: memberId },
+    body: { title },
   });
   if (error) {
     raiseApiError(error);

@@ -13,35 +13,22 @@ paths:
       responses:
         '204':
           description: 初期化に成功しました。
-  /api/feed:
-    get:
-      operationId: getFeed
-      summary: フィード一覧を取得する
-      description: プロジェクト、担当者、タスクをまとめたフィード表示用の一覧を取得します。
-      responses:
-        '200':
-          description: フィード一覧の取得に成功しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FeedResponse'
-  /api/members:
-    get:
-      operationId: getMembers
-      summary: メンバー一覧を取得する
-      description: 登録されているメンバーの一覧を取得します。
-      responses:
-        '200':
-          description: メンバー一覧の取得に成功しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MembersResponse'
   /api/tasks:
+    get:
+      operationId: getTasks
+      summary: タスク一覧を取得する
+      description: 登録されているタスクの一覧を取得します。
+      responses:
+        '200':
+          description: タスク一覧の取得に成功しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TasksResponse'
     post:
       operationId: createTask
       summary: タスクを作成する
-      description: 指定したメンバーを担当者として、新しいタスクを作成します。
+      description: 新しいタスクを作成します。
       requestBody:
         required: true
         description: 作成するタスクの内容です。
@@ -54,84 +41,41 @@ paths:
           description: タスクの作成に成功しました。
 components:
   schemas:
-    FeedItem:
+    Task:
       type: object
-      description: フィードに表示する1件分の情報です。
-      required:
-        - project_id
-        - project_name
-        - owner_name
-        - task_id
-        - task_title
-        - task_status
-      properties:
-        project_id:
-          type: integer
-          format: int64
-          description: プロジェクトIDです。
-        project_name:
-          type: string
-          description: プロジェクト名です。
-        owner_name:
-          type: string
-          description: プロジェクトの所有者名です。
-        task_id:
-          type: integer
-          format: int64
-          description: タスクIDです。
-        task_title:
-          type: string
-          description: タスク名です。
-        task_status:
-          type: string
-          description: タスクの状態です。
-    FeedResponse:
-      type: object
-      description: フィード一覧のレスポンスです。
-      required:
-        - data
-      properties:
-        data:
-          type: array
-          description: フィードに表示するデータの配列です。
-          items:
-            $ref: '#/components/schemas/FeedItem'
-    Member:
-      type: object
-      description: メンバー1人分の情報です。
+      description: タスク1件分の情報です。
       required:
         - id
-        - name
+        - title
+        - status
       properties:
         id:
           type: integer
           format: int64
-          description: メンバーIDです。
-        name:
+          description: タスクIDです。
+        title:
           type: string
-          description: メンバー名です。
-    MembersResponse:
+          description: タスク名です。
+        status:
+          type: string
+          description: タスクの状態です。
+    TasksResponse:
       type: object
-      description: メンバー一覧のレスポンスです。
+      description: タスク一覧のレスポンスです。
       required:
         - data
       properties:
         data:
           type: array
-          description: メンバーの配列です。
+          description: タスクの配列です。
           items:
-            $ref: '#/components/schemas/Member'
+            $ref: '#/components/schemas/Task'
     CreateTaskRequest:
       type: object
       description: タスク作成時に送る内容です。
       required:
         - title
-        - member_id
       properties:
         title:
           type: string
           description: 作成するタスク名です。
-        member_id:
-          type: integer
-          format: int64
-          description: 担当者にするメンバーIDです。

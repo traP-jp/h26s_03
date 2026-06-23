@@ -11,17 +11,16 @@ import (
 )
 
 type createTaskRequest struct {
-	Title    string `json:"title"`
-	MemberID int64  `json:"member_id"`
+	Title string `json:"title"`
 }
 
 func (h *Handler) CreateTask(ctx context.Context, req *openapi.CreateTaskRequest) error {
-	if req == nil || req.Title == "" || req.MemberID == 0 {
-		return fmt.Errorf("title and member_id are required")
+	if req == nil || req.Title == "" {
+		return fmt.Errorf("title is required")
 	}
 
-	query := `INSERT INTO tasks (project_id, assignee_member_id, title, status) VALUES (?, ?, ?, 'todo')`
-	if _, err := h.db.ExecContext(ctx, query, 1, req.MemberID, req.Title); err != nil {
+	query := `INSERT INTO tasks (title, status) VALUES (?, 'todo')`
+	if _, err := h.db.ExecContext(ctx, query, req.Title); err != nil {
 		return fmt.Errorf("insert task: %w", err)
 	}
 
@@ -35,11 +34,10 @@ func (h *Handler) CreateTaskEcho(c echo.Context) error {
 	}
 
 	err := h.CreateTask(c.Request().Context(), &openapi.CreateTaskRequest{
-		Title:    req.Title,
-		MemberID: req.MemberID,
+		Title: req.Title,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "title and member_id are required") {
+		if strings.Contains(err.Error(), "title is required") {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

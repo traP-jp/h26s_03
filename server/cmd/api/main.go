@@ -36,8 +36,7 @@ func main() {
 
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/feed", h.GetFeedEcho)
-	e.GET("/api/members", h.GetMembersEcho)
+	e.GET("/api/tasks", h.GetTasksEcho)
 	e.POST("/api/tasks", h.CreateTaskEcho)
 
 	assetsDir := getenv("ASSETS_DIR", "")

@@ -21,7 +21,7 @@ run = "docker compose up --build server"
 
 [tasks.dev]
 description = "普段の開発開始時に使う。フロントエンド、バックエンド、MySQLをまとめて起動する"
-run = [{ tasks = ["server", "client"] }]
+depends = ["client", "server"]
 
 [tasks.dev-full]
 description = "フロントエンドも含めて全部Dockerで起動したいときに使う"
@@ -33,11 +33,18 @@ run = "docker compose down"
 
 [tasks.migrate-up]
 description = "データベースのテーブル定義を最新に反映したいときに使う"
-run = "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' up"
+run = "go run -tags mysql github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' up"
 
 [tasks.migrate-down]
 description = "直前のデータベース変更を1つ戻したいときに使う"
-run = "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' down 1"
+run = "go run -tags mysql github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' down 1"
+
+[tasks.migrate-reset]
+description = "データベース内の全テーブルを消して、migrationを最初から適用し直す"
+run = '''
+go run -tags mysql github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' drop -f
+go run -tags mysql github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path server/migrations -database 'mysql://app:app@tcp(localhost:3306)/app' up
+'''
 
 [tasks.codegen]
 description = "API仕様書を変更したあと、フロントエンドとバックエンドの生成コードを更新する"

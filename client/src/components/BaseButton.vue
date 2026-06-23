@@ -40,12 +40,10 @@ const classes = computed(() => {
   font: inherit;
   cursor: pointer;
   transition:
-    transform 0.12s ease,
     background 0.12s ease;
 }
 
 .button:hover {
-  transform: translateY(-1px);
   background: var(--primary-strong);
 }
 

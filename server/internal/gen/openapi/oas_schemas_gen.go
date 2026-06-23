@@ -10,8 +10,6 @@ type CreateTaskCreated struct{}
 type CreateTaskRequest struct {
 	// 作成するタスク名です。.
 	Title string `json:"title"`
-	// 担当者にするメンバーIDです。.
-	MemberID int64 `json:"member_id"`
 }
 
 // GetTitle returns the value of Title.
@@ -19,160 +17,68 @@ func (s *CreateTaskRequest) GetTitle() string {
 	return s.Title
 }
 
-// GetMemberID returns the value of MemberID.
-func (s *CreateTaskRequest) GetMemberID() int64 {
-	return s.MemberID
-}
-
 // SetTitle sets the value of Title.
 func (s *CreateTaskRequest) SetTitle(val string) {
 	s.Title = val
 }
 
-// SetMemberID sets the value of MemberID.
-func (s *CreateTaskRequest) SetMemberID(val int64) {
-	s.MemberID = val
-}
-
-// フィードに表示する1件分の情報です。.
-// Ref: #/components/schemas/FeedItem
-type FeedItem struct {
-	// プロジェクトIDです。.
-	ProjectID int64 `json:"project_id"`
-	// プロジェクト名です。.
-	ProjectName string `json:"project_name"`
-	// プロジェクトの所有者名です。.
-	OwnerName string `json:"owner_name"`
-	// タスクIDです。.
-	TaskID int64 `json:"task_id"`
-	// タスク名です。.
-	TaskTitle string `json:"task_title"`
-	// タスクの状態です。.
-	TaskStatus string `json:"task_status"`
-}
-
-// GetProjectID returns the value of ProjectID.
-func (s *FeedItem) GetProjectID() int64 {
-	return s.ProjectID
-}
-
-// GetProjectName returns the value of ProjectName.
-func (s *FeedItem) GetProjectName() string {
-	return s.ProjectName
-}
-
-// GetOwnerName returns the value of OwnerName.
-func (s *FeedItem) GetOwnerName() string {
-	return s.OwnerName
-}
-
-// GetTaskID returns the value of TaskID.
-func (s *FeedItem) GetTaskID() int64 {
-	return s.TaskID
-}
-
-// GetTaskTitle returns the value of TaskTitle.
-func (s *FeedItem) GetTaskTitle() string {
-	return s.TaskTitle
-}
-
-// GetTaskStatus returns the value of TaskStatus.
-func (s *FeedItem) GetTaskStatus() string {
-	return s.TaskStatus
-}
-
-// SetProjectID sets the value of ProjectID.
-func (s *FeedItem) SetProjectID(val int64) {
-	s.ProjectID = val
-}
-
-// SetProjectName sets the value of ProjectName.
-func (s *FeedItem) SetProjectName(val string) {
-	s.ProjectName = val
-}
-
-// SetOwnerName sets the value of OwnerName.
-func (s *FeedItem) SetOwnerName(val string) {
-	s.OwnerName = val
-}
-
-// SetTaskID sets the value of TaskID.
-func (s *FeedItem) SetTaskID(val int64) {
-	s.TaskID = val
-}
-
-// SetTaskTitle sets the value of TaskTitle.
-func (s *FeedItem) SetTaskTitle(val string) {
-	s.TaskTitle = val
-}
-
-// SetTaskStatus sets the value of TaskStatus.
-func (s *FeedItem) SetTaskStatus(val string) {
-	s.TaskStatus = val
-}
-
-// フィード一覧のレスポンスです。.
-// Ref: #/components/schemas/FeedResponse
-type FeedResponse struct {
-	// フィードに表示するデータの配列です。.
-	Data []FeedItem `json:"data"`
-}
-
-// GetData returns the value of Data.
-func (s *FeedResponse) GetData() []FeedItem {
-	return s.Data
-}
-
-// SetData sets the value of Data.
-func (s *FeedResponse) SetData(val []FeedItem) {
-	s.Data = val
-}
-
 // InitializeNoContent is response for Initialize operation.
 type InitializeNoContent struct{}
 
-// メンバー1人分の情報です。.
-// Ref: #/components/schemas/Member
-type Member struct {
-	// メンバーIDです。.
+// タスク1件分の情報です。.
+// Ref: #/components/schemas/Task
+type Task struct {
+	// タスクIDです。.
 	ID int64 `json:"id"`
-	// メンバー名です。.
-	Name string `json:"name"`
+	// タスク名です。.
+	Title string `json:"title"`
+	// タスクの状態です。.
+	Status string `json:"status"`
 }
 
 // GetID returns the value of ID.
-func (s *Member) GetID() int64 {
+func (s *Task) GetID() int64 {
 	return s.ID
 }
 
-// GetName returns the value of Name.
-func (s *Member) GetName() string {
-	return s.Name
+// GetTitle returns the value of Title.
+func (s *Task) GetTitle() string {
+	return s.Title
+}
+
+// GetStatus returns the value of Status.
+func (s *Task) GetStatus() string {
+	return s.Status
 }
 
 // SetID sets the value of ID.
-func (s *Member) SetID(val int64) {
+func (s *Task) SetID(val int64) {
 	s.ID = val
 }
 
-// SetName sets the value of Name.
-func (s *Member) SetName(val string) {
-	s.Name = val
+// SetTitle sets the value of Title.
+func (s *Task) SetTitle(val string) {
+	s.Title = val
 }
 
-// メンバー一覧のレスポンスです。.
-// Ref: #/components/schemas/MembersResponse
-type MembersResponse struct {
-	// メンバーの配列です。.
-	Data []Member `json:"data"`
+// SetStatus sets the value of Status.
+func (s *Task) SetStatus(val string) {
+	s.Status = val
+}
+
+// タスク一覧のレスポンスです。.
+// Ref: #/components/schemas/TasksResponse
+type TasksResponse struct {
+	// タスクの配列です。.
+	Data []Task `json:"data"`
 }
 
 // GetData returns the value of Data.
-func (s *MembersResponse) GetData() []Member {
+func (s *TasksResponse) GetData() []Task {
 	return s.Data
 }
 
 // SetData sets the value of Data.
-func (s *MembersResponse) SetData(val []Member) {
+func (s *TasksResponse) SetData(val []Task) {
 	s.Data = val
 }

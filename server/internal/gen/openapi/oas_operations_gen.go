@@ -7,7 +7,6 @@ type OperationName = string
 
 const (
 	CreateTaskOperation OperationName = "CreateTask"
-	GetFeedOperation    OperationName = "GetFeed"
-	GetMembersOperation OperationName = "GetMembers"
+	GetTasksOperation   OperationName = "GetTasks"
 	InitializeOperation OperationName = "Initialize"
 )

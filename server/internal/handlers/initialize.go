@@ -22,19 +22,10 @@ func (h *Handler) Initialize(ctx context.Context) error {
 
 	queries := []string{
 		`TRUNCATE TABLE tasks;`,
-		`TRUNCATE TABLE projects;`,
-		`TRUNCATE TABLE members;`,
-		`INSERT INTO members (id, name) VALUES
-			(1, 'Sakura'),
-			(2, 'Haru'),
-			(3, 'Mio');`,
-		`INSERT INTO projects (id, name, owner_member_id) VALUES
-			(1, 'Landing Page', 1),
-			(2, 'Admin API', 2);`,
-		`INSERT INTO tasks (id, project_id, assignee_member_id, title, status) VALUES
-			(1, 1, 2, 'Design hero section', 'todo'),
-			(2, 1, 3, 'Implement CTA animation', 'doing'),
-			(3, 2, 1, 'Build initialize endpoint', 'done');`,
+		`INSERT INTO tasks (id, title, status) VALUES
+			(1, 'Design hero section', 'todo'),
+			(2, 'Implement CTA animation', 'doing'),
+			(3, 'Build initialize endpoint', 'done');`,
 	}
 
 	for _, q := range queries {
