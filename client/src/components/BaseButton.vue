@@ -39,8 +39,7 @@ const classes = computed(() => {
   padding: 10px 14px;
   font: inherit;
   cursor: pointer;
-  transition:
-    background 0.12s ease;
+  transition: background 0.12s ease;
 }
 
 .button:hover {
