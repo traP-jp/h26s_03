@@ -38,6 +38,43 @@ mise run codegen
 
 `internal/gen/openapi` は生成ファイルなので、基本的に手で編集しません。
 
+## テストを追加する
+
+API のテストは `internal/handlers/e2e_test.go` に追加します。テストでは Testcontainers で MySQL を起動し、migration を適用してから `httptest` で API を呼びます。
+
+新しいエンドポイントを追加したときは、まず `startTestServer` に routing を足します。
+
+```go
+e.POST("/api/tasks", h.CreateTaskEcho)
+```
+
+次に、`TestAPIEndToEndWithMySQLContainer` の `testCases` に scenario を追加します。
+
+```go
+{
+	name: "create task adds new task",
+	run:  scenarioCreateTaskAddsTask,
+},
+```
+
+scenario 関数では実際に API を呼び、ステータスコードやレスポンス、DB に保存された結果を確認します。既存の `mustRequestNoBody`、`createTaskAndExpectStatus`、`fetchTasks` のような helper を使うか、必要なら同じファイルに helper を追加してください。
+
+```go
+func scenarioCreateTaskAddsTask(t *testing.T, baseURL string) {
+	t.Helper()
+
+	createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{
+		"title": "Test task",
+	}, http.StatusCreated)
+}
+```
+
+追加したら、リポジトリ直下で次を実行して確認します。
+
+```bash
+mise run server-test
+```
+
 ## DB を変更する
 
 テーブルを変えたいときは `migrations` に SQL を追加・編集します。ローカル DB に反映するときは、リポジトリ直下で次を実行します。
@@ -66,8 +103,6 @@ curl -X POST http://localhost:8080/api/initialize
 mise run server-build
 mise run server-test
 ```
-
-`server-test` は Docker を使って MySQL コンテナを立てます。Docker が起動していないと失敗します。
 
 ## 環境変数
 

@@ -96,5 +96,3 @@ mise run client-build
 mise run server-build
 mise run server-test
 ```
-
-`server-test` は Docker を使って MySQL コンテナを立てるため、Docker が起動している必要があります。

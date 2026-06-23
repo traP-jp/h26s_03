@@ -19,6 +19,10 @@ run = "pnpm --dir client dev"
 description = "バックエンドとMySQLだけをDockerで起動したいときに使う"
 run = "docker compose up --build server"
 
+[tasks.db]
+description = "MySQLだけをDockerで起動したいときに使う"
+run = "docker compose up -d mysql"
+
 [tasks.dev]
 description = "普段の開発開始時に使う。フロントエンド、バックエンド、MySQLをまとめて起動する"
 depends = ["client", "server"]
@@ -77,3 +81,4 @@ run = "cd server && go build ./..."
 [tasks.server-test]
 description = "バックエンドのテストを実行したいときに使う"
 run = "cd server && go test ./... -v"
+depends = "db"
