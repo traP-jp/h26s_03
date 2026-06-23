@@ -6,6 +6,7 @@ go = "1.25.0"
 [tasks.setup]
 description = "初回セットアップや依存関係を入れ直したいときに使う。フロントエンド依存とVS Code用のGo整形ツールを入れる"
 run = '''
+cp .vscode/settings.template.json .vscode/settings.json
 pnpm --dir client install
 mkdir -p .tools/bin
 GOBIN="$PWD/.tools/bin" go install golang.org/x/tools/cmd/goimports@latest
