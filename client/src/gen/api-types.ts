@@ -14,8 +14,8 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * データベースを初期化する
-     * @description 開発用に既存データを削除し、サンプルデータを入れ直します。
+     * データを初期化する
+     * @description 既存データを削除し、開発用サンプルデータを再投入する
      */
     post: operations["initialize"];
     delete?: never;
@@ -33,13 +33,13 @@ export interface paths {
     };
     /**
      * タスク一覧を取得する
-     * @description 登録されているタスクの一覧を取得します。
+     * @description 登録済みタスクの一覧を返す
      */
     get: operations["getTasks"];
     put?: never;
     /**
      * タスクを作成する
-     * @description 新しいタスクを作成します。
+     * @description 新しいタスクを登録する
      */
     post: operations["createTask"];
     delete?: never;
@@ -52,26 +52,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description タスク1件分の情報です。 */
+    /** @description タスク */
     Task: {
       /**
        * Format: int64
-       * @description タスクIDです。
+       * @description タスクID
        */
       id: number;
-      /** @description タスク名です。 */
+      /** @description タスク名 */
       title: string;
-      /** @description タスクの状態です。 */
+      /** @description タスク状態 */
       status: string;
     };
-    /** @description タスク一覧のレスポンスです。 */
+    /** @description タスク一覧レスポンス */
     TasksResponse: {
-      /** @description タスクの配列です。 */
+      /** @description タスク一覧 */
       data: components["schemas"]["Task"][];
     };
-    /** @description タスク作成時に送る内容です。 */
+    /** @description タスク作成リクエスト */
     CreateTaskRequest: {
-      /** @description 作成するタスク名です。 */
+      /** @description タスク名 */
       title: string;
     };
   };
@@ -92,7 +92,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description 初期化に成功しました。 */
+      /** @description 初期化が完了した */
       204: {
         headers: {
           [name: string]: unknown;
@@ -110,7 +110,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description タスク一覧の取得に成功しました。 */
+      /** @description タスク一覧を返した */
       200: {
         headers: {
           [name: string]: unknown;
@@ -128,14 +128,14 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    /** @description 作成するタスクの内容です。 */
+    /** @description 作成するタスクの内容 */
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateTaskRequest"];
       };
     };
     responses: {
-      /** @description タスクの作成に成功しました。 */
+      /** @description タスクの作成が完了した */
       201: {
         headers: {
           [name: string]: unknown;

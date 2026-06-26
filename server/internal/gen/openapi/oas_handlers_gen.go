@@ -35,7 +35,7 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 
 // handleCreateTaskRequest handles createTask operation.
 //
-// 新しいタスクを作成します。.
+// 新しいタスクを登録する.
 //
 // POST /api/tasks
 func (s *Server) handleCreateTaskRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -178,7 +178,7 @@ func (s *Server) handleCreateTaskRequest(args [0]string, argsEscaped bool, w htt
 
 // handleGetTasksRequest handles getTasks operation.
 //
-// 登録されているタスクの一覧を取得します。.
+// 登録済みタスクの一覧を返す.
 //
 // GET /api/tasks
 func (s *Server) handleGetTasksRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -302,7 +302,7 @@ func (s *Server) handleGetTasksRequest(args [0]string, argsEscaped bool, w http.
 
 // handleInitializeRequest handles initialize operation.
 //
-// 開発用に既存データを削除し、サンプルデータを入れ直します。.
+// 既存データを削除し、開発用サンプルデータを再投入する.
 //
 // POST /api/initialize
 func (s *Server) handleInitializeRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -380,7 +380,7 @@ func (s *Server) handleInitializeRequest(args [0]string, argsEscaped bool, w htt
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    InitializeOperation,
-			OperationSummary: "データベースを初期化する",
+			OperationSummary: "データを初期化する",
 			OperationID:      "initialize",
 			Body:             nil,
 			RawBody:          rawBody,

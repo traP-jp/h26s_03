@@ -10,19 +10,19 @@ import (
 type Handler interface {
 	// CreateTask implements createTask operation.
 	//
-	// 新しいタスクを作成します。.
+	// 新しいタスクを登録する.
 	//
 	// POST /api/tasks
 	CreateTask(ctx context.Context, req *CreateTaskRequest) error
 	// GetTasks implements getTasks operation.
 	//
-	// 登録されているタスクの一覧を取得します。.
+	// 登録済みタスクの一覧を返す.
 	//
 	// GET /api/tasks
 	GetTasks(ctx context.Context) (*TasksResponse, error)
 	// Initialize implements initialize operation.
 	//
-	// 開発用に既存データを削除し、サンプルデータを入れ直します。.
+	// 既存データを削除し、開発用サンプルデータを再投入する.
 	//
 	// POST /api/initialize
 	Initialize(ctx context.Context) error

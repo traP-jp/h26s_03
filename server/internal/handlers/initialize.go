@@ -23,9 +23,9 @@ func (h *Handler) Initialize(ctx context.Context) error {
 	queries := []string{
 		`TRUNCATE TABLE tasks;`,
 		`INSERT INTO tasks (id, title, status) VALUES
-			(1, 'Design hero section', 'todo'),
-			(2, 'Implement CTA animation', 'doing'),
-			(3, 'Build initialize endpoint', 'done');`,
+			(1, 'トップページの構成を考える', 'todo'),
+			(2, 'タスク追加フォームを作る', 'doing'),
+			(3, '初期化APIをつなぐ', 'done');`,
 	}
 
 	for _, q := range queries {

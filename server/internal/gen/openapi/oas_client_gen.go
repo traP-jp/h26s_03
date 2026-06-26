@@ -29,19 +29,19 @@ func trimTrailingSlashes(u *url.URL) {
 type Invoker interface {
 	// CreateTask invokes createTask operation.
 	//
-	// 新しいタスクを作成します。.
+	// 新しいタスクを登録する.
 	//
 	// POST /api/tasks
 	CreateTask(ctx context.Context, request *CreateTaskRequest) error
 	// GetTasks invokes getTasks operation.
 	//
-	// 登録されているタスクの一覧を取得します。.
+	// 登録済みタスクの一覧を返す.
 	//
 	// GET /api/tasks
 	GetTasks(ctx context.Context) (*TasksResponse, error)
 	// Initialize invokes initialize operation.
 	//
-	// 開発用に既存データを削除し、サンプルデータを入れ直します。.
+	// 既存データを削除し、開発用サンプルデータを再投入する.
 	//
 	// POST /api/initialize
 	Initialize(ctx context.Context) error
@@ -88,7 +88,7 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 
 // CreateTask invokes createTask operation.
 //
-// 新しいタスクを作成します。.
+// 新しいタスクを登録する.
 //
 // POST /api/tasks
 func (c *Client) CreateTask(ctx context.Context, request *CreateTaskRequest) error {
@@ -171,7 +171,7 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 
 // GetTasks invokes getTasks operation.
 //
-// 登録されているタスクの一覧を取得します。.
+// 登録済みタスクの一覧を返す.
 //
 // GET /api/tasks
 func (c *Client) GetTasks(ctx context.Context) (*TasksResponse, error) {
@@ -251,7 +251,7 @@ func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err erro
 
 // Initialize invokes initialize operation.
 //
-// 開発用に既存データを削除し、サンプルデータを入れ直します。.
+// 既存データを削除し、開発用サンプルデータを再投入する.
 //
 // POST /api/initialize
 func (c *Client) Initialize(ctx context.Context) error {

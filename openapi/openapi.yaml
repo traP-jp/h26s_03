@@ -8,19 +8,19 @@ paths:
   /api/initialize:
     post:
       operationId: initialize
-      summary: データベースを初期化する
-      description: 開発用に既存データを削除し、サンプルデータを入れ直します。
+      summary: データを初期化する
+      description: 既存データを削除し、開発用サンプルデータを再投入する
       responses:
         '204':
-          description: 初期化に成功しました。
+          description: 初期化が完了した
   /api/tasks:
     get:
       operationId: getTasks
       summary: タスク一覧を取得する
-      description: 登録されているタスクの一覧を取得します。
+      description: 登録済みタスクの一覧を返す
       responses:
         '200':
-          description: タスク一覧の取得に成功しました。
+          description: タスク一覧を返した
           content:
             application/json:
               schema:
@@ -28,22 +28,22 @@ paths:
     post:
       operationId: createTask
       summary: タスクを作成する
-      description: 新しいタスクを作成します。
+      description: 新しいタスクを登録する
       requestBody:
         required: true
-        description: 作成するタスクの内容です。
+        description: 作成するタスクの内容
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateTaskRequest'
       responses:
         '201':
-          description: タスクの作成に成功しました。
+          description: タスクの作成が完了した
 components:
   schemas:
     Task:
       type: object
-      description: タスク1件分の情報です。
+      description: タスク
       required:
         - id
         - title
@@ -52,30 +52,30 @@ components:
         id:
           type: integer
           format: int64
-          description: タスクIDです。
+          description: タスクID
         title:
           type: string
-          description: タスク名です。
+          description: タスク名
         status:
           type: string
-          description: タスクの状態です。
+          description: タスク状態
     TasksResponse:
       type: object
-      description: タスク一覧のレスポンスです。
+      description: タスク一覧レスポンス
       required:
         - data
       properties:
         data:
           type: array
-          description: タスクの配列です。
+          description: タスク一覧
           items:
             $ref: '#/components/schemas/Task'
     CreateTaskRequest:
       type: object
-      description: タスク作成時に送る内容です。
+      description: タスク作成リクエスト
       required:
         - title
       properties:
         title:
           type: string
-          description: 作成するタスク名です。
+          description: タスク名

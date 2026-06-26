@@ -5,10 +5,10 @@ package openapi
 // CreateTaskCreated is response for CreateTask operation.
 type CreateTaskCreated struct{}
 
-// タスク作成時に送る内容です。.
+// タスク作成リクエスト.
 // Ref: #/components/schemas/CreateTaskRequest
 type CreateTaskRequest struct {
-	// 作成するタスク名です。.
+	// タスク名.
 	Title string `json:"title"`
 }
 
@@ -25,14 +25,14 @@ func (s *CreateTaskRequest) SetTitle(val string) {
 // InitializeNoContent is response for Initialize operation.
 type InitializeNoContent struct{}
 
-// タスク1件分の情報です。.
+// タスク.
 // Ref: #/components/schemas/Task
 type Task struct {
-	// タスクIDです。.
+	// タスクID.
 	ID int64 `json:"id"`
-	// タスク名です。.
+	// タスク名.
 	Title string `json:"title"`
-	// タスクの状態です。.
+	// タスク状態.
 	Status string `json:"status"`
 }
 
@@ -66,10 +66,10 @@ func (s *Task) SetStatus(val string) {
 	s.Status = val
 }
 
-// タスク一覧のレスポンスです。.
+// タスク一覧レスポンス.
 // Ref: #/components/schemas/TasksResponse
 type TasksResponse struct {
-	// タスクの配列です。.
+	// タスク一覧.
 	Data []Task `json:"data"`
 }
 

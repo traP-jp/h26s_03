@@ -231,7 +231,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					switch method {
 					case "POST":
 						r.name = InitializeOperation
-						r.summary = "データベースを初期化する"
+						r.summary = "データを初期化する"
 						r.operationID = "initialize"
 						r.operationGroup = ""
 						r.pathPattern = "/api/initialize"

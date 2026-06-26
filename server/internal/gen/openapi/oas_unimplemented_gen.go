@@ -15,7 +15,7 @@ var _ Handler = UnimplementedHandler{}
 
 // CreateTask implements createTask operation.
 //
-// 新しいタスクを作成します。.
+// 新しいタスクを登録する.
 //
 // POST /api/tasks
 func (UnimplementedHandler) CreateTask(ctx context.Context, req *CreateTaskRequest) error {
@@ -24,7 +24,7 @@ func (UnimplementedHandler) CreateTask(ctx context.Context, req *CreateTaskReque
 
 // GetTasks implements getTasks operation.
 //
-// 登録されているタスクの一覧を取得します。.
+// 登録済みタスクの一覧を返す.
 //
 // GET /api/tasks
 func (UnimplementedHandler) GetTasks(ctx context.Context) (r *TasksResponse, _ error) {
@@ -33,7 +33,7 @@ func (UnimplementedHandler) GetTasks(ctx context.Context) (r *TasksResponse, _ e
 
 // Initialize implements initialize operation.
 //
-// 開発用に既存データを削除し、サンプルデータを入れ直します。.
+// 既存データを削除し、開発用サンプルデータを再投入する.
 //
 // POST /api/initialize
 func (UnimplementedHandler) Initialize(ctx context.Context) error {
