@@ -19,6 +19,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.7",
+    "msw": "^2.14.6",
+    "openapi-msw": "^2.0.0",
     "openapi-typescript": "7.13.0",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
@@ -28,5 +30,10 @@
     "vite-plus": "0.2.1",
     "vue-tsc": "3.3.5"
   },
-  "packageManager": "pnpm@10.34.4"
+  "packageManager": "pnpm@10.34.4",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
 }

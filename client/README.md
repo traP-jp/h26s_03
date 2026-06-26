@@ -16,7 +16,7 @@ pnpm --dir client install
 mise run client
 ```
 
-ブラウザで `http://localhost:5173` を開きます。API はデフォルトで `http://localhost:8080` を見に行きます。
+ブラウザで `http://localhost:5173` を開きます。開発環境では MSW の API モックがデフォルトで有効になります。
 
 バックエンドと MySQL も一緒に起動したいときは、リポジトリ直下で次を使います。
 
@@ -56,8 +56,9 @@ mise run client-build
 
 ## 環境変数
 
-API の接続先を変えたいときは `VITE_API_BASE` を指定します。
+API の接続先を変えたいときは `VITE_API_BASE` を指定します。開発環境で MSW の API モックを無効にしたいときは `VITE_API_MOCKING=false` を指定します。
 
 ```bash
 VITE_API_BASE=http://localhost:8080 pnpm --dir client run dev
+VITE_API_MOCKING=false pnpm --dir client run dev
 ```
