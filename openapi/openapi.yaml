@@ -356,17 +356,12 @@ components:
       description: リアクション通知
       required:
         - type
-        - poll_id
-        - username
         - reaction
       properties:
         type:
           type: string
           enum:
             - reaction
-        poll_id:
-          type: string
-          description: 投票ID
         username:
           type: string
           description: ユーザー名
@@ -378,16 +373,11 @@ components:
       description: 投票通知
       required:
         - type
-        - poll_id
-        - username
       properties:
         type:
           type: string
           enum:
             - vote
-        poll_id:
-          type: string
-          description: 投票ID
         username:
           type: string
           description: ユーザー名

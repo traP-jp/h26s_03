@@ -24,11 +24,11 @@ func TestWebSocketBroadcasts(t *testing.T) {
 	}{
 		{
 			name:    "reaction",
-			payload: `{"type":"reaction","poll_id":"1","username":"alice","reaction":"like"}`,
+			payload: `{"type":"reaction","username":"alice","reaction":"like"}`,
 		},
 		{
 			name:    "vote",
-			payload: `{"type":"vote","poll_id":"1","username":"alice"}`,
+			payload: `{"type":"vote"}`,
 		},
 	}
 
@@ -59,7 +59,7 @@ func TestWebSocketBroadcastsOnlyToPollSubscribers(t *testing.T) {
 	poll1Viewer := dialWebSocket(t, baseURL, "1")
 	poll2Viewer := dialWebSocket(t, baseURL, "2")
 
-	payload := `{"type":"reaction","poll_id":"1","username":"alice","reaction":"like"}`
+	payload := `{"type":"reaction","username":"alice","reaction":"like"}`
 	if err := poll1Sender.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
 		t.Fatalf("write websocket message: %v", err)
 	}
@@ -94,15 +94,11 @@ func TestWebSocketDoesNotBroadcastInvalidMessages(t *testing.T) {
 	}{
 		{
 			name:    "reaction missing reaction",
-			payload: `{"type":"reaction","poll_id":"1","username":"alice"}`,
-		},
-		{
-			name:    "vote missing poll_id",
-			payload: `{"type":"vote","username":"alice"}`,
+			payload: `{"type":"reaction","username":"alice"}`,
 		},
 		{
 			name:    "unknown type",
-			payload: `{"type":"unknown","poll_id":"1","username":"alice"}`,
+			payload: `{"type":"unknown","username":"alice"}`,
 		},
 	}
 

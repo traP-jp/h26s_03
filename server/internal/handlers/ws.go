@@ -94,7 +94,7 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			if err := message.validate(); err != nil {
 				return nil
 			}
-			h.wsHub.broadcastToPoll(message.PollID, messageType, payload)
+			h.wsHub.broadcastToPoll(pollID, messageType, payload)
 		case websocketMessageTypeVote:
 			var message voteWebSocketMessage
 			if err := json.Unmarshal(payload, &message); err != nil {
@@ -103,7 +103,7 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			if err := message.validate(); err != nil {
 				return nil
 			}
-			h.wsHub.broadcastToPoll(message.PollID, messageType, payload)
+			h.wsHub.broadcastToPoll(pollID, messageType, payload)
 		default:
 			return nil
 		}
