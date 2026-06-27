@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import type { components } from '../gen/api-types'
-import { getPolls } from '../lib/api'
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
+import type { components } from "../gen/api-types";
+import { getPolls } from "../lib/api";
+
+const router = useRouter();
 //api/pollsの返り値
-type Poll = components['schemas']['Poll']
+type Poll = components["schemas"]["Poll"];
 
-const polls = ref<Poll[]>([])
+const polls = ref<Poll[]>([]);
 // ページが表示されたときに投票一覧を取得する
 async function loadPolls() {
   // const result = await fetch('/api/polls').then((r) => r.json())
@@ -17,17 +18,17 @@ async function loadPolls() {
 
 //投票の詳しい勝ち負け記入画面に行く
 function goToPoll(id: number) {
-  router.push(`/polls/${id}`)
+  router.push(`/polls/${id}`);
 }
 
 //投票作成画面に行く
 function goToCreatePoll() {
-  router.push('/polls/create')
+  router.push("/polls/create");
 }
 // ページが表示されたときに投票一覧を取得する
 onMounted(() => {
-  loadPolls()
-})
+  loadPolls();
+});
 // 投票一覧表示
 </script>
 <template>
@@ -39,16 +40,11 @@ onMounted(() => {
         <div class="poll-name">
           {{ poll.name }}
         </div>
-
       </button>
 
-      <button class="more-button" @click="goToCreatePoll">
-        もっと見る >
-      </button>
+      <button class="more-button" @click="goToCreatePoll">もっと見る ></button>
 
-      <button class="polladd-button" @click="goToCreatePoll">
-        + 新しい投票を作成
-      </button>
+      <button class="polladd-button" @click="goToCreatePoll">+ 新しい投票を作成</button>
     </div>
   </div>
 </template>
@@ -57,7 +53,7 @@ onMounted(() => {
 .background {
   min-height: 100vh;
   display: flex;
-  background-color: #0F172B;
+  background-color: #0f172b;
   justify-content: center;
 }
 
@@ -124,7 +120,7 @@ h2 {
   margin-top: 60px;
   background: #193cb815;
   color: #ffffff;
-  border: 2px solid #193CB8;
+  border: 2px solid #193cb8;
 
   border-radius: 5px;
   cursor: pointer;
@@ -133,4 +129,5 @@ h2 {
 .polladd-button:hover {
   background: rgba(248, 250, 255, 0.148);
 }
-</style>>
+</style>
+>

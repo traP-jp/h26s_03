@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 
 import type { paths, components } from "../gen/api-types";
 
-type Poll = components['schemas']['Poll']
+type Poll = components["schemas"]["Poll"];
 
 const client = createClient<paths>();
 
@@ -21,9 +21,9 @@ export const initializeData = async (): Promise<void> => {
 };
 
 export const getPolls = async (): Promise<Poll[]> => {
-  const {data, error} = await client.GET('/api/polls');
+  const { data, error } = await client.GET("/api/polls");
   if (error) {
-    raiseApiError(error)
+    raiseApiError(error);
   }
-  return data.data
-}
+  return data.data;
+};
