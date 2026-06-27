@@ -311,6 +311,7 @@ components:
           description: 選んだ選択肢
         bet:
           type: integer
+          default: 0
           description: いくら賭けたか
         created_at:
           type: string

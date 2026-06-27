@@ -218,7 +218,10 @@ export interface components {
       username: string;
       /** @description 選んだ選択肢 */
       choice: number;
-      /** @description いくら賭けたか */
+      /**
+       * @description いくら賭けたか
+       * @default 0
+       */
       bet: number;
       /**
        * Format: date-time
