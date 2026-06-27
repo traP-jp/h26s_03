@@ -40,7 +40,6 @@ onMounted(() => {
         v-for="poll in polls"
         :key="poll.id"
         class="poll-button"
-        @click="goToPoll(poll.id)"
         :to="`/polls/${poll.id}`"
       >
         <div class="poll-name">
@@ -48,11 +47,11 @@ onMounted(() => {
         </div>
       </RouterLink>
 
-      <RouterLink class="more-button" @click="goToCreatePoll" :to="'/polls'">
+      <RouterLink class="more-button":to="'/polls'">
         もっと見る >
       </RouterLink>
 
-      <RouterLink class="polladd-button" @click="goToCreatePoll" :to="'/create'">
+      <RouterLink class="polladd-button":to="'/create'">
         + 新しい投票を作成
       </RouterLink>
     </div>
