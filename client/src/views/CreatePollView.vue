@@ -92,7 +92,6 @@ const submitForm = async () => {
   try {
     const res = await createPoll(form);
     if (res) {
-      console.log(res);
       router.push(`/polls/${res.id}`);
       form.name = "";
       form.choice1 = "";
