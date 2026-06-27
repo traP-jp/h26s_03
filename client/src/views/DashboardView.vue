@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-
+import { useRouter, RouterLink } from "vue-router";
 import type { components } from "../gen/api-types";
 import { getPolls } from "../lib/api";
 
@@ -36,15 +35,19 @@ onMounted(() => {
     <div class="toppage">
       <h1>勝敗ギャンブル（仮）</h1>
       <h2>現在行われている投票</h2>
-      <button v-for="poll in polls" :key="poll.id" class="poll-button" @click="goToPoll(poll.id)">
+      <RouterLink v-for="poll in polls" :key="poll.id" class="poll-button" @click="goToPoll(poll.id)">
         <div class="poll-name">
           {{ poll.name }}
         </div>
-      </button>
+      </RouterLink>
 
-      <button class="more-button" @click="goToCreatePoll">もっと見る ></button>
+      <RouterLink class="more-button" @click="goToCreatePoll">
+        もっと見る >
+      </RouterLink>
 
-      <button class="polladd-button" @click="goToCreatePoll">+ 新しい投票を作成</button>
+      <RouterLink class="polladd-button" @click="goToCreatePoll">
+        + 新しい投票を作成
+      </RouterLink>
     </div>
   </div>
 </template>
@@ -88,6 +91,8 @@ h2 {
   margin-bottom: 10px;
   background: transparent;
   color: #ffffff;
+  text-decoration: none;
+  text-align: center;
   border: 2px solid #ffffff;
   border-radius: 5px;
   cursor: pointer;
@@ -104,6 +109,8 @@ h2 {
   margin-top: 0px;
   background: transparent;
   color: #ffffff;
+  text-decoration: none;
+  text-align: center;
   border: 2px solid #ffffff58;
   border-radius: 5px;
   cursor: pointer;
@@ -120,14 +127,15 @@ h2 {
   margin-top: 60px;
   background: #193cb815;
   color: #ffffff;
+  text-decoration: none;
+  text-align: center;
   border: 2px solid #193cb8;
-
   border-radius: 5px;
   cursor: pointer;
 }
 
 .polladd-button:hover {
-  background: rgba(248, 250, 255, 0.148);
+  background: rgba(132, 126, 255, 0.067);
 }
 </style>
 >
