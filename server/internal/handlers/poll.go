@@ -218,3 +218,38 @@ func (h *Handler) GetPoll(ctx context.Context, params openapi.GetPollParams) (op
 
 	return &poll, nil
 }
+
+func (h *Handler) GetPollVotes(ctx context.Context, params openapi.GetPollVotesParams) (openapi.GetPollVotesRes, error) {
+	var exists int
+	if err := h.db.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM polls WHERE id = ?)`, params.ID).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("check poll exists: %w", err)
+	}
+	if exists == 0 {
+		return &openapi.GetPollVotesNotFound{}, nil
+	}
+
+	rows, err := h.db.QueryxContext(ctx, `
+		SELECT id, username, choice, bet, created_at
+		FROM votes
+		WHERE poll_id = ?
+		ORDER BY id ASC
+	`, params.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get poll votes: %w", err)
+	}
+	defer rows.Close()
+
+	votes := make([]openapi.Vote, 0)
+	for rows.Next() {
+		var vote openapi.Vote
+		if err := rows.Scan(&vote.ID, &vote.Username, &vote.Choice, &vote.Bet, &vote.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan poll vote: %w", err)
+		}
+		votes = append(votes, vote)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate poll votes: %w", err)
+	}
+
+	return &openapi.VotesResponse{Data: votes}, nil
+}
