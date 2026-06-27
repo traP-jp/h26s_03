@@ -7,6 +7,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 const (
@@ -62,6 +64,10 @@ func (h *Handler) WebSocket(c echo.Context) error {
 	if pollID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "poll_id is required")
 	}
+	username, ok := authx.UserFromRequestContext(c.Request().Context())
+	if !ok {
+		username = anonymousUser
+	}
 
 	conn, err := websocketUpgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -94,6 +100,11 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			if err := message.validate(); err != nil {
 				return nil
 			}
+			message.Username = username
+			payload, err := json.Marshal(message)
+			if err != nil {
+				return nil
+			}
 			h.wsHub.broadcastToPoll(pollID, messageType, payload)
 		case websocketMessageTypeVote:
 			var message voteWebSocketMessage
@@ -101,6 +112,11 @@ func (h *Handler) WebSocket(c echo.Context) error {
 				return nil
 			}
 			if err := message.validate(); err != nil {
+				return nil
+			}
+			message.Username = username
+			payload, err := json.Marshal(message)
+			if err != nil {
 				return nil
 			}
 			h.wsHub.broadcastToPoll(pollID, messageType, payload)

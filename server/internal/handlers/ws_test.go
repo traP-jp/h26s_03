@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 func TestWebSocketBroadcasts(t *testing.T) {
@@ -21,14 +23,17 @@ func TestWebSocketBroadcasts(t *testing.T) {
 	testCases := []struct {
 		name    string
 		payload string
+		want    string
 	}{
 		{
 			name:    "reaction",
-			payload: `{"type":"reaction","username":"alice","reaction":"like"}`,
+			payload: `{"type":"reaction","reaction":"like"}`,
+			want:    `{"type":"reaction","username":"alice","reaction":"like"}`,
 		},
 		{
 			name:    "vote",
 			payload: `{"type":"vote"}`,
+			want:    `{"type":"vote","username":"alice"}`,
 		},
 	}
 
@@ -38,15 +43,15 @@ func TestWebSocketBroadcasts(t *testing.T) {
 			t.Parallel()
 
 			baseURL := startWebSocketTestServer(t)
-			poll1Sender := dialWebSocket(t, baseURL, "1")
-			poll1Viewer := dialWebSocket(t, baseURL, "1")
+			poll1Sender := dialWebSocketAs(t, baseURL, "1", "alice")
+			poll1Viewer := dialWebSocketAs(t, baseURL, "1", "viewer")
 
 			if err := poll1Sender.WriteMessage(websocket.TextMessage, []byte(tc.payload)); err != nil {
 				t.Fatalf("write websocket message: %v", err)
 			}
 
-			assertWebSocketMessage(t, poll1Sender, tc.payload)
-			assertWebSocketMessage(t, poll1Viewer, tc.payload)
+			assertWebSocketMessage(t, poll1Sender, tc.want)
+			assertWebSocketMessage(t, poll1Viewer, tc.want)
 		})
 	}
 }
@@ -59,13 +64,14 @@ func TestWebSocketBroadcastsOnlyToPollSubscribers(t *testing.T) {
 	poll1Viewer := dialWebSocket(t, baseURL, "1")
 	poll2Viewer := dialWebSocket(t, baseURL, "2")
 
-	payload := `{"type":"reaction","username":"alice","reaction":"like"}`
+	payload := `{"type":"reaction","username":"spoofed","reaction":"like"}`
+	want := `{"type":"reaction","username":"anonymous","reaction":"like"}`
 	if err := poll1Sender.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
 		t.Fatalf("write websocket message: %v", err)
 	}
 
-	assertWebSocketMessage(t, poll1Sender, payload)
-	assertWebSocketMessage(t, poll1Viewer, payload)
+	assertWebSocketMessage(t, poll1Sender, want)
+	assertWebSocketMessage(t, poll1Viewer, want)
 	assertNoWebSocketMessage(t, poll2Viewer)
 }
 
@@ -124,6 +130,7 @@ func startWebSocketTestServer(t *testing.T) string {
 	t.Helper()
 
 	e := echo.New()
+	e.Use(authx.Soft())
 	h := handlers.New(nil)
 	e.GET("/api/ws", h.WebSocket)
 
@@ -136,7 +143,18 @@ func startWebSocketTestServer(t *testing.T) string {
 func dialWebSocket(t *testing.T, baseURL string, pollID string) *websocket.Conn {
 	t.Helper()
 
-	conn, resp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("%s/api/ws?poll_id=%s", baseURL, pollID), nil)
+	return dialWebSocketAs(t, baseURL, pollID, "")
+}
+
+func dialWebSocketAs(t *testing.T, baseURL string, pollID string, username string) *websocket.Conn {
+	t.Helper()
+
+	header := http.Header{}
+	if username != "" {
+		header.Set(authx.HeaderForwardedUser, username)
+	}
+
+	conn, resp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("%s/api/ws?poll_id=%s", baseURL, pollID), header)
 	if err != nil {
 		if resp != nil {
 			t.Fatalf("dial websocket: status=%s err=%v", resp.Status, err)
