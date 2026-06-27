@@ -48,6 +48,14 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioGetPollByIDReturnsNotFound,
 		},
 		{
+			name: "get poll votes returns votes",
+			run:  scenarioGetPollVotesReturnsVotes,
+		},
+		{
+			name: "get poll votes returns not found",
+			run:  scenarioGetPollVotesReturnsNotFound,
+		},
+		{
 			name: "create poll succeeds",
 			run:  scenarioCreatePollSucceeds,
 		},
@@ -169,6 +177,46 @@ func scenarioGetPollByIDReturnsNotFound(t *testing.T, baseURL string, db *sqlx.D
 	}
 }
 
+func scenarioGetPollVotesReturnsVotes(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	seedVotes(t, db)
+
+	resp, err := http.Get(baseURL + "/api/polls/1/votes")
+	if err != nil {
+		t.Fatalf("get poll votes: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected poll votes status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+
+	var out votesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode poll votes: %v", err)
+	}
+	if len(out.Data) != 2 {
+		t.Fatalf("unexpected votes length: got=%d want=2", len(out.Data))
+	}
+	if out.Data[0].ID != 1 || out.Data[0].Username != "alice" || out.Data[0].Choice != 1 || out.Data[0].Bet != 100 {
+		t.Fatalf("unexpected first vote: %+v", out.Data[0])
+	}
+	if out.Data[1].ID != 2 || out.Data[1].Username != "bob" || out.Data[1].Choice != 2 || out.Data[1].Bet != 200 {
+		t.Fatalf("unexpected second vote: %+v", out.Data[1])
+	}
+}
+
+func scenarioGetPollVotesReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/999/votes", http.StatusNotFound)
+}
+
 type pollResponse struct {
 	ID        int64      `json:"id"`
 	Name      string     `json:"name"`
@@ -178,6 +226,18 @@ type pollResponse struct {
 	Due       *time.Time `json:"due"`
 	CreatedBy string     `json:"created_by"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+type votesResponse struct {
+	Data []voteResponse `json:"data"`
+}
+
+type voteResponse struct {
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Choice    int       `json:"choice"`
+	Bet       int       `json:"bet"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func seedPoll(t *testing.T, db *sqlx.DB) {
@@ -196,6 +256,29 @@ func seedPoll(t *testing.T, db *sqlx.DB) {
 	)
 	if err != nil {
 		t.Fatalf("seed poll: %v", err)
+	}
+}
+
+func seedVotes(t *testing.T, db *sqlx.DB) {
+	t.Helper()
+
+	_, err := db.Exec(`INSERT INTO votes (id, poll_id, username, choice, bet, created_at)
+		VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)`,
+		1,
+		1,
+		"alice",
+		1,
+		100,
+		time.Date(2026, 6, 27, 13, 0, 0, 0, time.UTC),
+		2,
+		1,
+		"bob",
+		2,
+		200,
+		time.Date(2026, 6, 27, 14, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatalf("seed votes: %v", err)
 	}
 }
 
