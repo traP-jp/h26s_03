@@ -396,7 +396,15 @@ components:
         - $ref: '#/components/schemas/ReactionWebSocketMessage'
         - $ref: '#/components/schemas/VoteWebSocketMessage'
 x-websocket-events:
-  description: WebSocket で送受信されるイベント
+  endpoint:
+    path: /api/ws
+    protocol: ws
+    query:
+      poll_id:
+        required: true
+        schema:
+          type: string
+        description: 購読する投票ID
   messages:
     - $ref: '#/components/schemas/ReactionWebSocketMessage'
     - $ref: '#/components/schemas/VoteWebSocketMessage'

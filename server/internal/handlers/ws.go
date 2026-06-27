@@ -20,17 +20,17 @@ type websocketMessageEnvelope struct {
 
 type websocketHub struct {
 	mu    sync.Mutex
-	conns map[*websocket.Conn]struct{}
+	conns map[*websocket.Conn]string
 }
 
 func newWebsocketHub() *websocketHub {
-	return &websocketHub{conns: make(map[*websocket.Conn]struct{})}
+	return &websocketHub{conns: make(map[*websocket.Conn]string)}
 }
 
-func (h *websocketHub) add(conn *websocket.Conn) {
+func (h *websocketHub) add(conn *websocket.Conn, pollID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.conns[conn] = struct{}{}
+	h.conns[conn] = pollID
 }
 
 func (h *websocketHub) remove(conn *websocket.Conn) {
@@ -39,11 +39,14 @@ func (h *websocketHub) remove(conn *websocket.Conn) {
 	delete(h.conns, conn)
 }
 
-func (h *websocketHub) broadcast(messageType int, payload []byte) {
+func (h *websocketHub) broadcastToPoll(pollID string, messageType int, payload []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	for conn := range h.conns {
+	for conn, connPollID := range h.conns {
+		if connPollID != pollID {
+			continue
+		}
 		_ = conn.WriteMessage(messageType, payload)
 	}
 }
@@ -55,6 +58,11 @@ var websocketUpgrader = websocket.Upgrader{
 }
 
 func (h *Handler) WebSocket(c echo.Context) error {
+	pollID := c.QueryParam("poll_id")
+	if pollID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "poll_id is required")
+	}
+
 	conn, err := websocketUpgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "failed to upgrade to websocket: "+err.Error())
@@ -64,7 +72,7 @@ func (h *Handler) WebSocket(c echo.Context) error {
 		_ = conn.Close()
 	}()
 
-	h.wsHub.add(conn)
+	h.wsHub.add(conn, pollID)
 
 	for {
 		messageType, payload, err := conn.ReadMessage()
@@ -86,7 +94,7 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			if err := message.validate(); err != nil {
 				return nil
 			}
-			h.wsHub.broadcast(messageType, payload)
+			h.wsHub.broadcastToPoll(message.PollID, messageType, payload)
 		case websocketMessageTypeVote:
 			var message voteWebSocketMessage
 			if err := json.Unmarshal(payload, &message); err != nil {
@@ -95,7 +103,7 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			if err := message.validate(); err != nil {
 				return nil
 			}
-			h.wsHub.broadcast(messageType, payload)
+			h.wsHub.broadcastToPoll(message.PollID, messageType, payload)
 		default:
 			return nil
 		}

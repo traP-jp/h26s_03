@@ -38,8 +38,8 @@ func TestWebSocketBroadcasts(t *testing.T) {
 			t.Parallel()
 
 			baseURL := startWebSocketTestServer(t)
-			poll1Sender := dialWebSocket(t, baseURL)
-			poll1Viewer := dialWebSocket(t, baseURL)
+			poll1Sender := dialWebSocket(t, baseURL, "1")
+			poll1Viewer := dialWebSocket(t, baseURL, "1")
 
 			if err := poll1Sender.WriteMessage(websocket.TextMessage, []byte(tc.payload)); err != nil {
 				t.Fatalf("write websocket message: %v", err)
@@ -48,6 +48,40 @@ func TestWebSocketBroadcasts(t *testing.T) {
 			assertWebSocketMessage(t, poll1Sender, tc.payload)
 			assertWebSocketMessage(t, poll1Viewer, tc.payload)
 		})
+	}
+}
+
+func TestWebSocketBroadcastsOnlyToPollSubscribers(t *testing.T) {
+	t.Parallel()
+
+	baseURL := startWebSocketTestServer(t)
+	poll1Sender := dialWebSocket(t, baseURL, "1")
+	poll1Viewer := dialWebSocket(t, baseURL, "1")
+	poll2Viewer := dialWebSocket(t, baseURL, "2")
+
+	payload := `{"type":"reaction","poll_id":"1","username":"alice","reaction":"like"}`
+	if err := poll1Sender.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
+		t.Fatalf("write websocket message: %v", err)
+	}
+
+	assertWebSocketMessage(t, poll1Sender, payload)
+	assertWebSocketMessage(t, poll1Viewer, payload)
+	assertNoWebSocketMessage(t, poll2Viewer)
+}
+
+func TestWebSocketRequiresPollID(t *testing.T) {
+	t.Parallel()
+
+	baseURL := startWebSocketTestServer(t)
+	_, resp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("%s/api/ws", baseURL), nil)
+	if err == nil {
+		t.Fatal("unexpected successful websocket dial without poll_id")
+	}
+	if resp == nil {
+		t.Fatalf("missing websocket response: %v", err)
+	}
+	if resp.StatusCode != 400 {
+		t.Fatalf("unexpected status: got=%d want=400", resp.StatusCode)
 	}
 }
 
@@ -78,8 +112,8 @@ func TestWebSocketDoesNotBroadcastInvalidMessages(t *testing.T) {
 			t.Parallel()
 
 			baseURL := startWebSocketTestServer(t)
-			sender := dialWebSocket(t, baseURL)
-			viewer := dialWebSocket(t, baseURL)
+			sender := dialWebSocket(t, baseURL, "1")
+			viewer := dialWebSocket(t, baseURL, "1")
 
 			if err := sender.WriteMessage(websocket.TextMessage, []byte(tc.payload)); err != nil {
 				t.Fatalf("write websocket message: %v", err)
@@ -103,10 +137,10 @@ func startWebSocketTestServer(t *testing.T) string {
 	return "ws" + strings.TrimPrefix(srv.URL, "http")
 }
 
-func dialWebSocket(t *testing.T, baseURL string) *websocket.Conn {
+func dialWebSocket(t *testing.T, baseURL string, pollID string) *websocket.Conn {
 	t.Helper()
 
-	conn, resp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("%s/api/ws", baseURL), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("%s/api/ws?poll_id=%s", baseURL, pollID), nil)
 	if err != nil {
 		if resp != nil {
 			t.Fatalf("dial websocket: status=%s err=%v", resp.Status, err)

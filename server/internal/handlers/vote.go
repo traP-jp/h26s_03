@@ -8,7 +8,6 @@ type voteWebSocketMessage struct {
 	Username string `json:"username"`
 }
 
-
 func (m voteWebSocketMessage) validate() error {
 	if m.Type != websocketMessageTypeVote {
 		return errors.New("type must be vote")
