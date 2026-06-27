@@ -51,6 +51,22 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			name: "create poll succeeds",
 			run:  scenarioCreatePollSucceeds,
 		},
+		{
+			name: "delete poll succeeds",
+			run:  scenarioDeletePollSucceeds,
+		},
+		{
+			name: "delete poll returns forbidden",
+			run:  scenarioDeletePollReturnsForbidden,
+		},
+		{
+			name: "delete poll returns not found",
+			run:  scenarioDeletePollReturnsNotFound,
+		},
+		{
+			name: "patch poll updates selected fields",
+			run:  scenarioPatchPollUpdatesSelectedFields,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -73,6 +89,7 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	e := echo.New()
 	e.Use(authx.Soft())
 	h := handlers.New(db)
+	e.PATCH("/api/polls/:id", h.UpdatePollEcho)
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
 		t.Fatalf("create api server: %v", err)
@@ -171,6 +188,12 @@ type pollResponse struct {
 func seedPoll(t *testing.T, db *sqlx.DB) {
 	t.Helper()
 
+	seedPollCreatedBy(t, db, "traq_user")
+}
+
+func seedPollCreatedBy(t *testing.T, db *sqlx.DB, createdBy string) int64 {
+	t.Helper()
+
 	_, err := db.Exec(`INSERT INTO polls (id, name, choice1, choice2, result, due, created_by, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		1,
@@ -179,11 +202,62 @@ func seedPoll(t *testing.T, db *sqlx.DB) {
 		"たけのこ",
 		nil,
 		nil,
-		"traq_user",
+		createdBy,
 		time.Date(2026, 6, 27, 12, 0, 0, 0, time.UTC),
 	)
 	if err != nil {
 		t.Fatalf("seed poll: %v", err)
+	}
+
+	return 1
+}
+
+func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	pollID := seedPollCreatedBy(t, db, "owner-user")
+
+	body := strings.NewReader(`{"name":"after","result":1,"due":null}`)
+	req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/api/polls/%d", baseURL, pollID), body)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(authx.HeaderForwardedUser, "owner-user")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request PATCH /api/polls/%d: %v", pollID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+
+	var got struct {
+		ID     int64   `json:"id"`
+		Name   string  `json:"name"`
+		Result *int    `json:"result"`
+		Due    *string `json:"due"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if got.ID != pollID {
+		t.Fatalf("unexpected id: got=%d want=%d", got.ID, pollID)
+	}
+	if got.Name != "after" {
+		t.Fatalf("unexpected name: got=%q want=%q", got.Name, "after")
+	}
+	if got.Result == nil || *got.Result != 1 {
+		t.Fatalf("unexpected result: got=%v want=1", got.Result)
+	}
+	if got.Due != nil {
+		t.Fatalf("unexpected due: got=%v want=nil", got.Due)
 	}
 }
 
@@ -212,6 +286,31 @@ func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	if !strings.Contains(string(raw), `"created_by":"alice"`) {
 		t.Fatalf("unexpected body: %s", string(raw))
 	}
+}
+
+func scenarioDeletePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "traq_user", http.StatusNoContent)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusNotFound)
+}
+
+func scenarioDeletePollReturnsForbidden(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "alice", http.StatusForbidden)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusOK)
+}
+
+func scenarioDeletePollReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/999", "traq_user", http.StatusNotFound)
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
@@ -308,6 +407,27 @@ func mustRequestNoBody(t *testing.T, method, url string, expectedStatus int) {
 	if err != nil {
 		t.Fatalf("create request: %v", err)
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request %s %s: %v", method, url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
+	}
+}
+
+func mustRequestNoBodyWithUser(t *testing.T, method, url, user string, expectedStatus int) {
+	t.Helper()
+
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("X-Forwarded-User", user)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
