@@ -51,6 +51,52 @@ func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest
 	return poll, nil
 }
 
+func (h *Handler) DeletePoll(ctx context.Context, params openapi.DeletePollParams) (openapi.DeletePollRes, error) {
+	currentUser, ok := authx.UserFromRequestContext(ctx)
+	if !ok {
+		currentUser = anonymousUser
+	}
+
+	var createdBy string
+	if err := h.db.QueryRowxContext(ctx, `SELECT created_by FROM polls WHERE id = ?`, params.ID).Scan(&createdBy); err != nil {
+		if err == sql.ErrNoRows {
+			return &openapi.DeletePollNotFound{}, nil
+		}
+		return nil, fmt.Errorf("get poll creator: %w", err)
+	}
+	if createdBy != currentUser {
+		return &openapi.DeletePollForbidden{}, nil
+	}
+
+	tx, err := h.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin delete poll transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM votes WHERE poll_id = ?`, params.ID); err != nil {
+		return nil, fmt.Errorf("delete poll votes: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, `DELETE FROM polls WHERE id = ?`, params.ID)
+	if err != nil {
+		return nil, fmt.Errorf("delete poll: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("get deleted poll count: %w", err)
+	}
+	if affected == 0 {
+		return &openapi.DeletePollNotFound{}, nil
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit delete poll transaction: %w", err)
+	}
+
+	return &openapi.DeletePollNoContent{}, nil
+}
+
 func nilInt() openapi.NilInt {
 	v := openapi.NilInt{}
 	v.SetToNull()
