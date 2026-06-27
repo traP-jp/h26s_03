@@ -510,6 +510,13 @@ export interface operations {
           "application/json": components["schemas"]["Vote"];
         };
       };
+      /** @description Choice が不正 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
       /** @description 投票が見つからない */
       404: {
         headers: {
@@ -517,7 +524,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description 同じ投票に既に賭けている */
+      /** @description 同じ投票に既に賭けている・所持金が足りない */
       409: {
         headers: {
           [name: string]: unknown;

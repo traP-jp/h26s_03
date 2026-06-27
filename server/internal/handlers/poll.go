@@ -80,6 +80,25 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 		return &openapi.CreateVoteConflict{}, nil
 	}
 
+	if req.Choice != 1 && req.Choice != 2 {
+		return &openapi.CreateVoteBadRequest{}, nil
+	}
+
+
+	var balance int
+	if err := h.db.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if username == anonymousUser {
+				return &openapi.CreateVoteConflict{}, nil
+			}
+		}
+		balance = 0
+	}
+
+	if req.Bet != 0 && balance < req.Bet {
+		return &openapi.CreateVoteConflict{}, nil
+	}
+
 	createdAt := time.Now().UTC()
 	result, err := h.db.ExecContext(ctx, `
 		INSERT INTO votes (poll_id, username, choice, bet, created_at)

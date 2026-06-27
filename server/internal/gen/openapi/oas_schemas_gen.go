@@ -59,6 +59,11 @@ func (s *CreatePollRequest) SetDue(val OptNilDateTime) {
 	s.Due = val
 }
 
+// CreateVoteBadRequest is response for CreateVote operation.
+type CreateVoteBadRequest struct{}
+
+func (*CreateVoteBadRequest) createVoteRes() {}
+
 // CreateVoteConflict is response for CreateVote operation.
 type CreateVoteConflict struct{}
 
