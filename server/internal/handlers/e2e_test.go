@@ -284,6 +284,15 @@ func seedPollCreatedBy(t *testing.T, db *sqlx.DB, createdBy string) int64 {
 	return 1
 }
 
+func seedUser(t *testing.T, db *sqlx.DB, username string, balance int) {
+	t.Helper()
+
+	_, err := db.Exec(`INSERT INTO users (username, balance) VALUES (?, ?)`, username, balance)
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+}
+
 func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
@@ -388,6 +397,7 @@ func scenarioCreateVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	seedPoll(t, db)
+	seedUser(t, db, "alice", 100)
 
 	resp := mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
 
@@ -415,6 +425,7 @@ func scenarioCreateVoteReturnsConflict(t *testing.T, baseURL string, db *sqlx.DB
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	seedPoll(t, db)
+	seedUser(t, db, "alice", 300)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":2,"bet":200}`, http.StatusConflict)
 }
