@@ -1,7 +1,8 @@
 import createClient from "openapi-fetch";
 
-import type { paths, components } from "../gen/api-types";
+import type { components, paths } from "../gen/api-types";
 
+type CreatePollRequest = components["schemas"]["CreatePollRequest"];
 type Poll = components["schemas"]["Poll"];
 
 const client = createClient<paths>();
@@ -18,6 +19,19 @@ export const initializeData = async (): Promise<void> => {
   if (error) {
     raiseApiError(error);
   }
+};
+
+export const createPoll = async (pollData: CreatePollRequest): Promise<Poll> => {
+  const { error, data } = await client.POST("/api/polls", {
+    body: pollData,
+  });
+  if (error) {
+    raiseApiError(error);
+  }
+  if (!data) {
+    throw new Error("Failed to create poll");
+  }
+  return data;
 };
 
 export const getPolls = async (): Promise<Poll[]> => {
