@@ -17,13 +17,14 @@ import (
 
 type Handler struct {
 	openapi.UnimplementedHandler
-	db *sqlx.DB
+	db    *sqlx.DB
+	wsHub *websocketHub
 }
 
 var _ openapi.Handler = (*Handler)(nil)
 
 func New(db *sqlx.DB) *Handler {
-	return &Handler{db: db}
+	return &Handler{db: db, wsHub: newWebsocketHub()}
 }
 
 type pollRow struct {

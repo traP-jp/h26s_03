@@ -356,7 +356,6 @@ components:
       description: リアクション通知
       required:
         - type
-        - poll_id
         - username
         - reaction
       properties:
@@ -364,9 +363,6 @@ components:
           type: string
           enum:
             - reaction
-        poll_id:
-          type: string
-          description: 投票ID
         username:
           type: string
           description: ユーザー名
@@ -378,16 +374,12 @@ components:
       description: 投票通知
       required:
         - type
-        - poll_id
         - username
       properties:
         type:
           type: string
           enum:
             - vote
-        poll_id:
-          type: string
-          description: 投票ID
         username:
           type: string
           description: ユーザー名
@@ -396,7 +388,15 @@ components:
         - $ref: '#/components/schemas/ReactionWebSocketMessage'
         - $ref: '#/components/schemas/VoteWebSocketMessage'
 x-websocket-events:
-  description: WebSocket で送受信されるイベント
+  endpoint:
+    path: /api/ws
+    protocol: ws
+    query:
+      poll_id:
+        required: true
+        schema:
+          type: string
+        description: 購読する投票ID
   messages:
     - $ref: '#/components/schemas/ReactionWebSocketMessage'
     - $ref: '#/components/schemas/VoteWebSocketMessage'
