@@ -33,3 +33,11 @@ export const createPoll = async (pollData: CreatePollRequest): Promise<Poll> => 
   }
   return data;
 };
+
+export const getPolls = async (): Promise<Poll[]> => {
+  const { data, error } = await client.GET("/api/polls");
+  if (error) {
+    raiseApiError(error);
+  }
+  return data.data;
+};

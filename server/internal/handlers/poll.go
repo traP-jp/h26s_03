@@ -1,38 +1,54 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
-	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 )
 
-type pollRow struct {
-	ID        int64         `db:"id"`
-	Name      string        `db:"name"`
-	Choice1   string        `db:"choice1"`
-	Choice2   string        `db:"choice2"`
-	Result    sql.NullInt64 `db:"result"`
-	Due       sql.NullTime  `db:"due"`
-	CreatedBy string        `db:"created_by"`
-	CreatedAt time.Time     `db:"created_at"`
-}
+func (h *Handler) GetPoll(ctx context.Context, params openapi.GetPollParams) (openapi.GetPollRes, error) {
+	var (
+		poll      openapi.Poll
+		result    sql.NullInt64
+		due       sql.NullTime
+		createdAt time.Time
+	)
 
-func (h *Handler) GetPollsID(c echo.Context) error {
-	pollId := c.Param("id")
-
-	if len(pollId) == 0 {
-		return c.String(http.StatusBadRequest, "Poll ID is required")
-	}
-
-	var poll pollRow
-	if err := h.db.GetContext(c.Request().Context(), &poll, "SELECT * FROM polls WHERE id = ?", pollId); err != nil {
+	if err := h.db.QueryRowxContext(
+		ctx,
+		"SELECT id, name, choice1, choice2, result, due, created_by, created_at FROM polls WHERE id = ?",
+		params.ID,
+	).Scan(
+		&poll.ID,
+		&poll.Name,
+		&poll.Choice1,
+		&poll.Choice2,
+		&result,
+		&due,
+		&poll.CreatedBy,
+		&createdAt,
+	); err != nil {
 		if err == sql.ErrNoRows {
-			return c.String(http.StatusNotFound, "Poll not found")
+			return &openapi.GetPollNotFound{}, nil
 		}
-		return c.String(http.StatusInternalServerError, "Failed to fetch poll")
+		return nil, err
 	}
 
-	return c.JSON(http.StatusOK, poll)
+	if result.Valid {
+		poll.Result.SetTo(int(result.Int64))
+	} else {
+		poll.Result.SetToNull()
+	}
+
+	if due.Valid {
+		poll.Due.SetTo(due.Time)
+	} else {
+		poll.Due.SetToNull()
+	}
+
+	poll.CreatedAt = createdAt
+
+	return &poll, nil
 }

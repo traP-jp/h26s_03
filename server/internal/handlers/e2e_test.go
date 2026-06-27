@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
 )
 
@@ -65,8 +67,11 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 
 	e := echo.New()
 	h := handlers.New(db)
-	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/polls/:id", h.GetPollsID)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		t.Fatalf("create api server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -96,6 +101,9 @@ func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("unexpected poll status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
 	}
+	if contentType := resp.Header.Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("unexpected poll content-type: got=%s want application/json", contentType)
+	}
 
 	var out pollResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -113,6 +121,16 @@ func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
 	}
 	if out.CreatedBy != "traq_user" {
 		t.Fatalf("unexpected created_by: got=%s", out.CreatedBy)
+	}
+	if out.Result != nil {
+		t.Fatalf("unexpected result: got=%v want nil", *out.Result)
+	}
+	if out.Due != nil {
+		t.Fatalf("unexpected due: got=%v want nil", *out.Due)
+	}
+	wantCreatedAt := time.Date(2026, 6, 27, 12, 0, 0, 0, time.UTC)
+	if !out.CreatedAt.Equal(wantCreatedAt) {
+		t.Fatalf("unexpected created_at: got=%s want=%s", out.CreatedAt, wantCreatedAt)
 	}
 }
 
@@ -134,11 +152,14 @@ func scenarioGetPollByIDReturnsNotFound(t *testing.T, baseURL string, db *sqlx.D
 }
 
 type pollResponse struct {
-	ID        int64  `json:"ID"`
-	Name      string `json:"Name"`
-	Choice1   string `json:"Choice1"`
-	Choice2   string `json:"Choice2"`
-	CreatedBy string `json:"CreatedBy"`
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Choice1   string     `json:"choice1"`
+	Choice2   string     `json:"choice2"`
+	Result    *int64     `json:"result"`
+	Due       *time.Time `json:"due"`
+	CreatedBy string     `json:"created_by"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 func seedPoll(t *testing.T, db *sqlx.DB) {
