@@ -40,6 +40,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioInitializeSucceeds,
 		},
 		{
+			name: "get me returns current user",
+			run:  scenarioGetMeReturnsCurrentUser,
+		},
+		{
 			name: "get poll by id returns poll",
 			run:  scenarioGetPollByIDReturnsPoll,
 		},
@@ -101,6 +105,42 @@ func scenarioInitializeSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+}
+
+func scenarioGetMeReturnsCurrentUser(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/me", nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("X-Forwarded-User", "alice")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request GET /api/me: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected me status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+	if contentType := resp.Header.Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("unexpected me content-type: got=%s want application/json", contentType)
+	}
+
+	var out meResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode me: %v", err)
+	}
+
+	if out.Username != "alice" {
+		t.Fatalf("unexpected username: got=%s want=alice", out.Username)
+	}
+	if out.Balance != 0 {
+		t.Fatalf("unexpected balance: got=%d want=0", out.Balance)
+	}
 }
 
 func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
@@ -178,6 +218,11 @@ type pollResponse struct {
 	Due       *time.Time `json:"due"`
 	CreatedBy string     `json:"created_by"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+type meResponse struct {
+	Username string `json:"username"`
+	Balance  int    `json:"balance"`
 }
 
 func seedPoll(t *testing.T, db *sqlx.DB) {
