@@ -1,6 +1,7 @@
 package authx
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -11,6 +12,8 @@ const (
 	HeaderForwardedUser = "X-Forwarded-User"
 	ContextUserKey      = "forwardedUser"
 )
+
+type contextUserKey struct{}
 
 type Mode string
 
@@ -46,13 +49,15 @@ func New(mode Mode) echo.MiddlewareFunc {
 			}
 
 			c.Set(ContextUserKey, user)
+			req := c.Request()
+			c.SetRequest(req.WithContext(context.WithValue(req.Context(), contextUserKey{}, user)))
 			return next(c)
 		}
 	}
 }
 
-func UserFromContext(c echo.Context) (string, bool) {
-	v := c.Get(ContextUserKey)
+func UserFromRequestContext(ctx context.Context) (string, bool) {
+	v := ctx.Value(contextUserKey{})
 	if v == nil {
 		return "", false
 	}

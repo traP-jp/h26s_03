@@ -40,7 +40,7 @@ func main() {
 
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
-		log.Fatalf("failed to create api server: %v", err)
+		log.Fatalf("failed to create openapi server: %v", err)
 	}
 	e.Any("/api/*", echo.WrapHandler(apiServer))
 
