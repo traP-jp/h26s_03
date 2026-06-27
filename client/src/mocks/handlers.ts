@@ -140,8 +140,8 @@ const resetPolls = (): void => {
   nextVoteId = getNextVoteId(votes);
 };
 
-const getUsername = (): string => {
-  return import.meta.env.VITE_API_USER ?? "cp20";
+const getUsername = (request: Request): string => {
+  return request.headers.get("x-forwarded-user") ?? "developer";
 };
 
 const jsonError = (message: string, status: number) => {
@@ -184,7 +184,7 @@ export const handlers = [
       choice2: body.choice2,
       result: null,
       due: body.due ?? null,
-      created_by: getUsername(),
+      created_by: getUsername(request),
       created_at: new Date().toISOString(),
     };
 
@@ -208,7 +208,7 @@ export const handlers = [
     if (!poll) {
       return response.untyped(jsonError("poll not found", 404));
     }
-    if (poll.created_by !== getUsername()) {
+    if (poll.created_by !== getUsername(request)) {
       return response.untyped(jsonError("poll owner mismatch", 403));
     }
 
@@ -227,13 +227,13 @@ export const handlers = [
     return response(200).json({ ...poll });
   }),
 
-  http.delete("/api/polls/{id}", ({ params, response }) => {
+  http.delete("/api/polls/{id}", ({ params, request, response }) => {
     const pollIndex = polls.findIndex((item) => item.id === Number(params.id));
     if (pollIndex < 0) {
       return response.untyped(jsonError("poll not found", 404));
     }
     const poll = polls[pollIndex];
-    if (poll.created_by !== getUsername()) {
+    if (poll.created_by !== getUsername(request)) {
       return response.untyped(jsonError("poll owner mismatch", 403));
     }
 
@@ -275,7 +275,7 @@ export const handlers = [
     }
     const body = parsed.output;
 
-    const username = getUsername();
+    const username = getUsername(request);
     if (votes.some((vote) => vote.poll_id === pollID && vote.username === username)) {
       return response.untyped(jsonError("already voted", 409));
     }
@@ -300,7 +300,7 @@ export const handlers = [
     });
   }),
 
-  http.delete("/api/polls/{poll_id}/votes/{vote_id}", ({ params, response }) => {
+  http.delete("/api/polls/{poll_id}/votes/{vote_id}", ({ params, request, response }) => {
     const pollID = Number(params.poll_id);
     const voteID = Number(params.vote_id);
     const voteIndex = votes.findIndex((vote) => vote.poll_id === pollID && vote.id === voteID);
@@ -308,7 +308,7 @@ export const handlers = [
     if (voteIndex < 0) {
       return response.untyped(jsonError("vote not found", 404));
     }
-    if (votes[voteIndex].username !== getUsername()) {
+    if (votes[voteIndex].username !== getUsername(request)) {
       return response.untyped(jsonError("vote owner mismatch", 403));
     }
 
@@ -316,9 +316,9 @@ export const handlers = [
     return response(204).empty();
   }),
 
-  http.get("/api/me", ({ response }) => {
+  http.get("/api/me", ({ request, response }) => {
     const body: Me = {
-      username: getUsername(),
+      username: getUsername(request),
       balance: 1000,
     };
 
