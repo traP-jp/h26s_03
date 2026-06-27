@@ -67,7 +67,6 @@ func startTestServer(t *testing.T) string {
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
 	e.GET("/api/polls", h.GetPollsEcho)
-	e.GET("/polls", h.GetPollsChapterEcho)
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)

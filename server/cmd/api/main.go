@@ -37,7 +37,6 @@ func main() {
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
 	e.GET("/api/polls", h.GetPollsEcho)
-	e.GET("/polls", h.GetPollsChapterEcho)
 
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {
