@@ -1,21 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
-	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 )
 
-func (h *Handler) GetPollsID(c echo.Context) error {
-	pollId := c.Param("id")
-
-	if len(pollId) == 0 {
-		return c.String(http.StatusBadRequest, "Poll ID is required")
-	}
-
+func (h *Handler) GetPoll(ctx context.Context, params openapi.GetPollParams) (openapi.GetPollRes, error) {
 	var (
 		poll      openapi.Poll
 		result    sql.NullInt64
@@ -24,9 +17,9 @@ func (h *Handler) GetPollsID(c echo.Context) error {
 	)
 
 	if err := h.db.QueryRowxContext(
-		c.Request().Context(),
+		ctx,
 		"SELECT id, name, choice1, choice2, result, due, created_by, created_at FROM polls WHERE id = ?",
-		pollId,
+		params.ID,
 	).Scan(
 		&poll.ID,
 		&poll.Name,
@@ -38,9 +31,9 @@ func (h *Handler) GetPollsID(c echo.Context) error {
 		&createdAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			return c.String(http.StatusNotFound, "Poll not found")
+			return &openapi.GetPollNotFound{}, nil
 		}
-		return c.String(http.StatusInternalServerError, "Failed to fetch poll")
+		return nil, err
 	}
 
 	if result.Valid {
@@ -57,5 +50,5 @@ func (h *Handler) GetPollsID(c echo.Context) error {
 
 	poll.CreatedAt = createdAt
 
-	return c.JSON(http.StatusOK, poll)
+	return &poll, nil
 }

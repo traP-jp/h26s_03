@@ -21,6 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
 )
 
@@ -66,8 +67,11 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 
 	e := echo.New()
 	h := handlers.New(db)
-	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/polls/:id", h.GetPollsID)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		t.Fatalf("create api server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
