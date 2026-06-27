@@ -8,6 +8,11 @@ const router = createRouter({
       name: "dashboard",
       component: () => import("./views/DashboardView.vue"),
     },
+    {
+      path: "/polls/create",
+      name: "createPoll",
+      component: () => import("./views/CreatePollView.vue"),
+    },
   ],
 });
 

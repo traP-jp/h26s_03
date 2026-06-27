@@ -21,6 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
 	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
@@ -39,8 +40,28 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioInitializeSucceeds,
 		},
 		{
-			name: "get polls returns empty list",
-			run:  scenarioGetPollsReturnsEmptyList,
+			name: "get poll by id returns poll",
+			run:  scenarioGetPollByIDReturnsPoll,
+		},
+		{
+			name: "get poll by id returns not found",
+			run:  scenarioGetPollByIDReturnsNotFound,
+		},
+		{
+			name: "create poll succeeds",
+			run:  scenarioCreatePollSucceeds,
+		},
+		{
+			name: "delete poll succeeds",
+			run:  scenarioDeletePollSucceeds,
+		},
+		{
+			name: "delete poll returns forbidden",
+			run:  scenarioDeletePollReturnsForbidden,
+		},
+		{
+			name: "delete poll returns not found",
+			run:  scenarioDeletePollReturnsNotFound,
 		},
 		{
 			name: "patch poll updates selected fields",
@@ -66,11 +87,14 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	applyMigrations(t, db)
 
 	e := echo.New()
-	e.Use(authx.New(authx.ModeSoft))
+	e.Use(authx.Soft())
 	h := handlers.New(db)
-	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/polls", h.GetPollsEcho)
 	e.PATCH("/api/polls/:id", h.UpdatePollEcho)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		t.Fatalf("create api server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -78,47 +102,121 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	return srv.URL, db
 }
 
-func scenarioInitializeSucceeds(t *testing.T, baseURL string, _ *sqlx.DB) {
+func scenarioInitializeSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 }
 
-func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string, _ *sqlx.DB) {
+func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/polls", nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.Get(baseURL + "/api/polls/1")
 	if err != nil {
-		t.Fatalf("request GET %s: %v", baseURL+"/api/polls", err)
+		t.Fatalf("get poll: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+		t.Fatalf("unexpected poll status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+	if contentType := resp.Header.Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("unexpected poll content-type: got=%s want application/json", contentType)
 	}
 
-	var got struct {
-		Data []any `json:"data"`
+	var out pollResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode poll: %v", err)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
+
+	if out.ID != 1 {
+		t.Fatalf("unexpected poll id: got=%d want=1", out.ID)
 	}
-	if len(got.Data) != 0 {
-		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
+	if out.Name != "きのこ派？たけのこ派？" {
+		t.Fatalf("unexpected poll name: got=%s", out.Name)
 	}
+	if out.Choice1 != "きのこ" || out.Choice2 != "たけのこ" {
+		t.Fatalf("unexpected choices: choice1=%s choice2=%s", out.Choice1, out.Choice2)
+	}
+	if out.CreatedBy != "traq_user" {
+		t.Fatalf("unexpected created_by: got=%s", out.CreatedBy)
+	}
+	if out.Result != nil {
+		t.Fatalf("unexpected result: got=%v want nil", *out.Result)
+	}
+	if out.Due != nil {
+		t.Fatalf("unexpected due: got=%v want nil", *out.Due)
+	}
+	wantCreatedAt := time.Date(2026, 6, 27, 12, 0, 0, 0, time.UTC)
+	if !out.CreatedAt.Equal(wantCreatedAt) {
+		t.Fatalf("unexpected created_at: got=%s want=%s", out.CreatedAt, wantCreatedAt)
+	}
+}
+
+func scenarioGetPollByIDReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+
+	resp, err := http.Get(baseURL + "/api/polls/999")
+	if err != nil {
+		t.Fatalf("get missing poll: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected missing poll status: got=%d want=%d body=%s", resp.StatusCode, http.StatusNotFound, string(raw))
+	}
+}
+
+type pollResponse struct {
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Choice1   string     `json:"choice1"`
+	Choice2   string     `json:"choice2"`
+	Result    *int64     `json:"result"`
+	Due       *time.Time `json:"due"`
+	CreatedBy string     `json:"created_by"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+func seedPoll(t *testing.T, db *sqlx.DB) {
+	t.Helper()
+
+	seedPollCreatedBy(t, db, "traq_user")
+}
+
+func seedPollCreatedBy(t *testing.T, db *sqlx.DB, createdBy string) int64 {
+	t.Helper()
+
+	_, err := db.Exec(`INSERT INTO polls (id, name, choice1, choice2, result, due, created_by, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		1,
+		"きのこ派？たけのこ派？",
+		"きのこ",
+		"たけのこ",
+		nil,
+		nil,
+		createdBy,
+		time.Date(2026, 6, 27, 12, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatalf("seed poll: %v", err)
+	}
+
+	return 1
 }
 
 func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-	pollID := seedPoll(t, db, "owner-user")
+	pollID := seedPollCreatedBy(t, db, "owner-user")
 
 	body := strings.NewReader(`{"name":"after","result":1,"due":null}`)
 	req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/api/polls/%d", baseURL, pollID), body)
@@ -163,25 +261,56 @@ func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sq
 	}
 }
 
-func seedPoll(t *testing.T, db *sqlx.DB, createdBy string) int64 {
+func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
-	const query = `
-INSERT INTO polls (name, choice1, choice2, result, due, created_by, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)`
-
-	now := time.Now().UTC().Truncate(time.Second)
-	res, err := db.Exec(query, "before", "A", "B", nil, now, createdBy, now)
+	body := `{"name":"昼食","choice1":"うどん","choice2":"カレー","due":null}`
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/polls", strings.NewReader(body))
 	if err != nil {
-		t.Fatalf("insert poll: %v", err)
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", "alice")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request POST /api/polls: %v", err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusCreated, string(raw))
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		t.Fatalf("last insert id: %v", err)
+	if !strings.Contains(string(raw), `"created_by":"alice"`) {
+		t.Fatalf("unexpected body: %s", string(raw))
 	}
+}
 
-	return id
+func scenarioDeletePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "traq_user", http.StatusNoContent)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusNotFound)
+}
+
+func scenarioDeletePollReturnsForbidden(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "alice", http.StatusForbidden)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusOK)
+}
+
+func scenarioDeletePollReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/999", "traq_user", http.StatusNotFound)
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
@@ -278,6 +407,27 @@ func mustRequestNoBody(t *testing.T, method, url string, expectedStatus int) {
 	if err != nil {
 		t.Fatalf("create request: %v", err)
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request %s %s: %v", method, url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
+	}
+}
+
+func mustRequestNoBodyWithUser(t *testing.T, method, url, user string, expectedStatus int) {
+	t.Helper()
+
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("X-Forwarded-User", user)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

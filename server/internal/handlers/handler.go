@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -34,22 +33,7 @@ type pollRow struct {
 	Result    sql.NullInt64 `db:"result"`
 	Due       sql.NullTime  `db:"due"`
 	CreatedBy string        `db:"created_by"`
-	CreatedAt sql.NullTime  `db:"created_at"`
-}
-
-type pollResponseRow struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Choice1   string     `json:"choice1"`
-	Choice2   string     `json:"choice2"`
-	Result    *int       `json:"result"`
-	Due       *time.Time `json:"due"`
-	CreatedBy string     `json:"created_by"`
-	CreatedAt time.Time  `json:"created_at"`
-}
-
-type pollsResponse struct {
-	Data []pollResponseRow `json:"data"`
+	CreatedAt time.Time     `db:"created_at"`
 }
 
 func toOpenAPIPoll(row pollRow) openapi.Poll {
@@ -73,9 +57,7 @@ func toOpenAPIPoll(row pollRow) openapi.Poll {
 		poll.Due.SetToNull()
 	}
 
-	if row.CreatedAt.Valid {
-		poll.CreatedAt = row.CreatedAt.Time
-	}
+	poll.CreatedAt = row.CreatedAt
 
 	return poll
 }
@@ -102,33 +84,6 @@ WHERE id = ?`
 	return row, nil
 }
 
-func (h *Handler) GetPolls(ctx context.Context) (*openapi.PollsResponse, error) {
-	const query = `
-SELECT
-	id,
-	name,
-	choice1,
-	choice2,
-	result,
-	due,
-	created_by,
-	created_at
-FROM polls
-ORDER BY created_at DESC, id DESC`
-
-	var rows []pollRow
-	if err := h.db.SelectContext(ctx, &rows, query); err != nil {
-		return nil, fmt.Errorf("select polls: %w", err)
-	}
-
-	polls := make([]openapi.Poll, 0, len(rows))
-	for _, row := range rows {
-		polls = append(polls, toOpenAPIPoll(row))
-	}
-
-	return &openapi.PollsResponse{Data: polls}, nil
-}
-
 func (h *Handler) GetPollsEcho(c echo.Context) error {
 	response, err := h.GetPolls(c.Request().Context())
 	if err != nil {
@@ -138,31 +93,18 @@ func (h *Handler) GetPollsEcho(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *Handler) UpdatePollEcho(c echo.Context) error {
-
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	// エラー処理
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid poll id")
-	}
-
-	ctx := c.Request().Context()
-	current, err := h.getPollByID(ctx, id)
+func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest, params openapi.UpdatePollParams) (openapi.UpdatePollRes, error) {
+	current, err := h.getPollByID(ctx, params.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return echo.NewHTTPError(http.StatusNotFound, "poll not found")
+			return &openapi.UpdatePollNotFound{}, nil
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+		return nil, err
 	}
 
-	user, ok := authx.UserFromContext(c)
+	user, ok := authx.UserFromRequestContext(ctx)
 	if !ok || user != current.CreatedBy {
-		return echo.NewHTTPError(http.StatusForbidden, "forbidden")
-	}
-
-	var req openapi.UpdatePollRequest
-	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return &openapi.UpdatePollForbidden{}, nil
 	}
 
 	name := current.Name
@@ -201,15 +143,43 @@ UPDATE polls
 SET name = ?, choice1 = ?, choice2 = ?, result = ?, due = ?
 WHERE id = ?`
 
-	if _, err := h.db.ExecContext(ctx, updateQuery, name, choice1, choice2, result, due, id); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+	if _, err := h.db.ExecContext(ctx, updateQuery, name, choice1, choice2, result, due, params.ID); err != nil {
+		return nil, err
 	}
 
-	updated, err := h.getPollByID(ctx, id)
+	updated, err := h.getPollByID(ctx, params.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	poll := toOpenAPIPoll(updated)
+	return &poll, nil
+}
+
+func (h *Handler) UpdatePollEcho(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid poll id")
+	}
+
+	var req openapi.UpdatePollRequest
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	response, err := h.UpdatePoll(c.Request().Context(), &req, openapi.UpdatePollParams{ID: id})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	return c.JSON(http.StatusOK, toOpenAPIPoll(updated))
+	switch response := response.(type) {
+	case *openapi.Poll:
+		return c.JSON(http.StatusOK, response)
+	case *openapi.UpdatePollForbidden:
+		return echo.NewHTTPError(http.StatusForbidden, "forbidden")
+	case *openapi.UpdatePollNotFound:
+		return echo.NewHTTPError(http.StatusNotFound, "poll not found")
+	default:
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+	}
 }
-

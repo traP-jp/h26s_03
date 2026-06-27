@@ -1,23 +1,43 @@
-const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
-
 import createClient from "openapi-fetch";
 
-import type { paths } from "../gen/api-types";
+import type { components, paths } from "../gen/api-types";
 
-const client = createClient<paths>({
-  baseUrl: apiBase,
-});
+type CreatePollRequest = components["schemas"]["CreatePollRequest"];
+type Poll = components["schemas"]["Poll"];
 
-function raiseApiError(error: unknown): never {
+const client = createClient<paths>();
+
+const raiseApiError = (error: unknown): never => {
   if (error instanceof Error) {
     throw error;
   }
   throw new Error("request failed");
-}
+};
 
-export async function initializeData(): Promise<void> {
+export const initializeData = async (): Promise<void> => {
   const { error } = await client.POST("/api/initialize");
   if (error) {
     raiseApiError(error);
   }
-}
+};
+
+export const createPoll = async (pollData: CreatePollRequest): Promise<Poll> => {
+  const { error, data } = await client.POST("/api/polls", {
+    body: pollData,
+  });
+  if (error) {
+    raiseApiError(error);
+  }
+  if (!data) {
+    throw new Error("Failed to create poll");
+  }
+  return data;
+};
+
+export const getPolls = async (): Promise<Poll[]> => {
+  const { data, error } = await client.GET("/api/polls");
+  if (error) {
+    raiseApiError(error);
+  }
+  return data.data;
+};
