@@ -31,22 +31,7 @@ type pollRow struct {
 	Result    sql.NullInt64 `db:"result"`
 	Due       sql.NullTime  `db:"due"`
 	CreatedBy string        `db:"created_by"`
-	CreatedAt sql.NullTime  `db:"created_at"`
-}
-
-type pollResponseRow struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Choice1   string     `json:"choice1"`
-	Choice2   string     `json:"choice2"`
-	Result    *int       `json:"result"`
-	Due       *time.Time `json:"due"`
-	CreatedBy string     `json:"created_by"`
-	CreatedAt time.Time  `json:"created_at"`
-}
-
-type pollsResponse struct {
-	Data []pollResponseRow `json:"data"`
+	CreatedAt time.Time     `db:"created_at"`
 }
 
 func (h *Handler) GetPolls(ctx context.Context) (*openapi.PollsResponse, error) {
@@ -90,9 +75,7 @@ ORDER BY created_at DESC, id DESC`
 			poll.Due.SetToNull()
 		}
 
-		if row.CreatedAt.Valid {
-			poll.CreatedAt = row.CreatedAt.Time
-		}
+		poll.CreatedAt = row.CreatedAt
 
 		polls = append(polls, poll)
 	}
@@ -108,4 +91,3 @@ func (h *Handler) GetPollsEcho(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
-

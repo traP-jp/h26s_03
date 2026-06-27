@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +21,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
@@ -37,18 +40,16 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioInitializeSucceeds,
 		},
 		{
-			name: "get polls returns empty list",
-			run:  scenarioGetPollsReturnsEmptyList,
-		},
-		{
-			name: "get polls alias returns empty list",
-			run:  scenarioGetPollsAliasReturnsEmptyList,
 			name: "get poll by id returns poll",
 			run:  scenarioGetPollByIDReturnsPoll,
 		},
 		{
 			name: "get poll by id returns not found",
 			run:  scenarioGetPollByIDReturnsNotFound,
+		},
+		{
+			name: "create poll succeeds",
+			run:  scenarioCreatePollSucceeds,
 		},
 	}
 
@@ -70,10 +71,13 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	applyMigrations(t, db)
 
 	e := echo.New()
+	e.Use(authx.Soft())
 	h := handlers.New(db)
-	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/polls", h.GetPollsEcho)
-	e.GET("/api/polls/:id", h.GetPollsID)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		t.Fatalf("create api server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -87,17 +91,6 @@ func scenarioInitializeSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 }
 
-func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string) {
-	t.Helper()
-
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/polls", nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request GET %s: %v", baseURL+"/api/polls", err)
 func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
@@ -112,48 +105,10 @@ func scenarioGetPollByIDReturnsPoll(t *testing.T, baseURL string, db *sqlx.DB) {
 
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
-	}
-
-	var got struct {
-		Data []any `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if len(got.Data) != 0 {
-		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
-	}
-}
-
-func scenarioGetPollsAliasReturnsEmptyList(t *testing.T, baseURL string) {
-	t.Helper()
-
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/polls", nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request GET %s: %v", baseURL+"/polls", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
-	}
-
-	var got struct {
-		Data []any `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if len(got.Data) != 0 {
-		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
 		t.Fatalf("unexpected poll status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+	if contentType := resp.Header.Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("unexpected poll content-type: got=%s want application/json", contentType)
 	}
 
 	var out pollResponse
@@ -172,6 +127,16 @@ func scenarioGetPollsAliasReturnsEmptyList(t *testing.T, baseURL string) {
 	}
 	if out.CreatedBy != "traq_user" {
 		t.Fatalf("unexpected created_by: got=%s", out.CreatedBy)
+	}
+	if out.Result != nil {
+		t.Fatalf("unexpected result: got=%v want nil", *out.Result)
+	}
+	if out.Due != nil {
+		t.Fatalf("unexpected due: got=%v want nil", *out.Due)
+	}
+	wantCreatedAt := time.Date(2026, 6, 27, 12, 0, 0, 0, time.UTC)
+	if !out.CreatedAt.Equal(wantCreatedAt) {
+		t.Fatalf("unexpected created_at: got=%s want=%s", out.CreatedAt, wantCreatedAt)
 	}
 }
 
@@ -193,11 +158,14 @@ func scenarioGetPollByIDReturnsNotFound(t *testing.T, baseURL string, db *sqlx.D
 }
 
 type pollResponse struct {
-	ID        int64  `json:"ID"`
-	Name      string `json:"Name"`
-	Choice1   string `json:"Choice1"`
-	Choice2   string `json:"Choice2"`
-	CreatedBy string `json:"CreatedBy"`
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Choice1   string     `json:"choice1"`
+	Choice2   string     `json:"choice2"`
+	Result    *int64     `json:"result"`
+	Due       *time.Time `json:"due"`
+	CreatedBy string     `json:"created_by"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 func seedPoll(t *testing.T, db *sqlx.DB) {
@@ -216,6 +184,33 @@ func seedPoll(t *testing.T, db *sqlx.DB) {
 	)
 	if err != nil {
 		t.Fatalf("seed poll: %v", err)
+	}
+}
+
+func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	body := `{"name":"昼食","choice1":"うどん","choice2":"カレー","due":null}`
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/polls", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", "alice")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request POST /api/polls: %v", err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusCreated, string(raw))
+	}
+
+	if !strings.Contains(string(raw), `"created_by":"alice"`) {
+		t.Fatalf("unexpected body: %s", string(raw))
 	}
 }
 
