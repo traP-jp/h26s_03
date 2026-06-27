@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
 	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
@@ -37,7 +38,11 @@ func main() {
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
 
-	e.GET("/api/polls/:id", h.GetPollsID)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		log.Fatalf("failed to create api server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {
