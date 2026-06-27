@@ -356,6 +356,7 @@ components:
       description: リアクション通知
       required:
         - type
+        - username
         - reaction
       properties:
         type:
@@ -373,6 +374,7 @@ components:
       description: 投票通知
       required:
         - type
+        - username
       properties:
         type:
           type: string

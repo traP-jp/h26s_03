@@ -250,7 +250,7 @@ export interface components {
       /** @enum {string} */
       type: "reaction";
       /** @description ユーザー名 */
-      username?: string;
+      username: string;
       /** @description リアクション */
       reaction: string;
     };
@@ -259,7 +259,7 @@ export interface components {
       /** @enum {string} */
       type: "vote";
       /** @description ユーザー名 */
-      username?: string;
+      username: string;
     };
     WebSocketMessage:
       | components["schemas"]["ReactionWebSocketMessage"]
