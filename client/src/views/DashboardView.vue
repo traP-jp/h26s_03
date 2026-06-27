@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { RouterLink } from "vue-router";
 
 import type { components } from "../gen/api-types";
 import { getPolls } from "../lib/api";
 
-const router = useRouter();
 //api/pollsの返り値
 type Poll = components["schemas"]["Poll"];
 
@@ -16,15 +15,6 @@ async function loadPolls() {
   polls.value = await getPolls();
 }
 
-//投票の詳しい勝ち負け記入画面に行く
-function goToPoll(id: number) {
-  router.push(`/polls/${id}`);
-}
-
-//投票作成画面に行く
-function goToCreatePoll() {
-  router.push("/polls/create");
-}
 // ページが表示されたときに投票一覧を取得する
 onMounted(() => {
   loadPolls();
