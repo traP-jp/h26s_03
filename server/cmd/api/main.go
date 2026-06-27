@@ -38,6 +38,7 @@ func main() {
 	e.POST("/api/initialize", h.InitializeEcho)
 	e.GET("/api/polls", h.GetPollsEcho)
 	e.PATCH("/api/polls/:id", h.UpdatePollEcho)
+	
 
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {
