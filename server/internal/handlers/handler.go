@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -82,6 +83,33 @@ WHERE id = ?`
 	}
 
 	return row, nil
+}
+
+func (h *Handler) GetPolls(ctx context.Context) (*openapi.PollsResponse, error) {
+	const query = `
+SELECT
+	id,
+	name,
+	choice1,
+	choice2,
+	result,
+	due,
+	created_by,
+	created_at
+FROM polls
+ORDER BY created_at DESC, id DESC`
+
+	var rows []pollRow
+	if err := h.db.SelectContext(ctx, &rows, query); err != nil {
+		return nil, fmt.Errorf("select polls: %w", err)
+	}
+
+	polls := make([]openapi.Poll, 0, len(rows))
+	for _, row := range rows {
+		polls = append(polls, toOpenAPIPoll(row))
+	}
+
+	return &openapi.PollsResponse{Data: polls}, nil
 }
 
 func (h *Handler) GetPollsEcho(c echo.Context) error {
