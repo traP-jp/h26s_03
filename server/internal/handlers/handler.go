@@ -122,23 +122,6 @@ func (h *Handler) GetPollsEcho(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *Handler) GetMe(ctx context.Context) (*openapi.Me, error) {
-	username, ok := authx.UserFromRequestContext(ctx)
-	if !ok {
-		username = anonymousUser
-	}
-
-	var balance int
-	if err := h.db.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
-		if err == sql.ErrNoRows {
-			return &openapi.Me{Username: username, Balance: 0}, nil
-		}
-		return nil, fmt.Errorf("get me: %w", err)
-	}
-
-	return &openapi.Me{Username: username, Balance: balance}, nil
-}
-
 func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest, params openapi.UpdatePollParams) (openapi.UpdatePollRes, error) {
 	current, err := h.getPollByID(ctx, params.ID)
 	if err != nil {
