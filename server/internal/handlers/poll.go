@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
@@ -49,6 +51,65 @@ func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest
 	}
 
 	return poll, nil
+}
+
+func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest, params openapi.CreateVoteParams) (openapi.CreateVoteRes, error) {
+	username, ok := authx.UserFromRequestContext(ctx)
+	if !ok {
+		username = anonymousUser
+	}
+
+	var exists int
+	if err := h.db.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM polls WHERE id = ?)`, params.ID).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("check poll exists: %w", err)
+	}
+	if exists == 0 {
+		return &openapi.CreateVoteNotFound{}, nil
+	}
+
+	var alreadyVoted int
+	if err := h.db.QueryRowxContext(
+		ctx,
+		`SELECT EXISTS(SELECT 1 FROM votes WHERE poll_id = ? AND username = ?)`,
+		params.ID,
+		username,
+	).Scan(&alreadyVoted); err != nil {
+		return nil, fmt.Errorf("check vote exists: %w", err)
+	}
+	if alreadyVoted != 0 {
+		return &openapi.CreateVoteConflict{}, nil
+	}
+
+	createdAt := time.Now().UTC()
+	result, err := h.db.ExecContext(ctx, `
+		INSERT INTO votes (poll_id, username, choice, bet, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, params.ID, username, req.Choice, req.Bet, createdAt)
+	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) {
+			switch mysqlErr.Number {
+			case 1062:
+				return &openapi.CreateVoteConflict{}, nil
+			case 1452:
+				return &openapi.CreateVoteNotFound{}, nil
+			}
+		}
+		return nil, fmt.Errorf("create vote: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("get created vote id: %w", err)
+	}
+
+	return &openapi.Vote{
+		ID:        id,
+		Username:  username,
+		Choice:    req.Choice,
+		Bet:       req.Bet,
+		CreatedAt: createdAt,
+	}, nil
 }
 
 func (h *Handler) DeletePoll(ctx context.Context, params openapi.DeletePollParams) (openapi.DeletePollRes, error) {
