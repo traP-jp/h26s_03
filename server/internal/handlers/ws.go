@@ -9,6 +9,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const (
+	websocketMessageTypeReaction = "reaction"
+	websocketMessageTypeVote     = "vote"
+)
+
 type websocketMessageEnvelope struct {
 	Type string `json:"type"`
 }
@@ -83,6 +88,13 @@ func (h *Handler) WebSocket(c echo.Context) error {
 			}
 			h.wsHub.broadcast(messageType, payload)
 		case websocketMessageTypeVote:
+			var message voteWebSocketMessage
+			if err := json.Unmarshal(payload, &message); err != nil {
+				return nil
+			}
+			if err := message.validate(); err != nil {
+				return nil
+			}
 			h.wsHub.broadcast(messageType, payload)
 		default:
 			return nil
