@@ -52,6 +52,18 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioCreatePollSucceeds,
 		},
 		{
+			name: "create vote succeeds",
+			run:  scenarioCreateVoteSucceeds,
+		},
+		{
+			name: "create vote returns not found",
+			run:  scenarioCreateVoteReturnsNotFound,
+		},
+		{
+			name: "create vote returns conflict",
+			run:  scenarioCreateVoteReturnsConflict,
+		},
+		{
 			name: "delete poll succeeds",
 			run:  scenarioDeletePollSucceeds,
 		},
@@ -180,6 +192,14 @@ type pollResponse struct {
 	CreatedAt time.Time  `json:"created_at"`
 }
 
+type voteResponse struct {
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Choice    int       `json:"choice"`
+	Bet       int       `json:"bet"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func seedPoll(t *testing.T, db *sqlx.DB) {
 	t.Helper()
 
@@ -224,6 +244,42 @@ func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	if !strings.Contains(string(raw), `"created_by":"alice"`) {
 		t.Fatalf("unexpected body: %s", string(raw))
 	}
+}
+
+func scenarioCreateVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+
+	resp := mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
+
+	var out voteResponse
+	if err := json.Unmarshal(resp, &out); err != nil {
+		t.Fatalf("decode created vote: %v", err)
+	}
+	if out.ID != 1 || out.Username != "alice" || out.Choice != 1 || out.Bet != 100 {
+		t.Fatalf("unexpected created vote: %+v", out)
+	}
+	if out.CreatedAt.IsZero() {
+		t.Fatalf("unexpected created_at: zero")
+	}
+}
+
+func scenarioCreateVoteReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/999/votes", "alice", `{"choice":1,"bet":100}`, http.StatusNotFound)
+}
+
+func scenarioCreateVoteReturnsConflict(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
+	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":2,"bet":200}`, http.StatusConflict)
 }
 
 func scenarioDeletePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
@@ -377,4 +433,27 @@ func mustRequestNoBodyWithUser(t *testing.T, method, url, user string, expectedS
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
 	}
+}
+
+func mustRequestJSONWithUser(t *testing.T, method, url, user, body string, expectedStatus int) []byte {
+	t.Helper()
+
+	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", user)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request %s %s: %v", method, url, err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != expectedStatus {
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
+	}
+	return raw
 }
