@@ -40,7 +40,7 @@
       </div>
       <div class="form-group">
         <label for="due" class="form-label">期限</label>
-        <input id="due" v-model="form.due" type="datetime-local" class="form-input" />
+        <input id="due" v-model="dueModel" type="datetime-local" class="form-input" />
       </div>
       <div>
         <button type="button" class="submit-button" @click="submitForm">作成する</button>
@@ -50,18 +50,34 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from "vue";
+import { computed, reactive } from "vue";
 import { useRouter } from "vue-router";
 
 import { createPoll } from "../lib/api";
 const router = useRouter();
 
-const form = reactive({
+type PollForm = {
+  name: string;
+  choice1: string;
+  choice2: string;
+  due: string | null;
+};
+
+const form = reactive<PollForm>({
   name: "",
   choice1: "",
   choice2: "",
   due: null,
 });
+
+const dueModel = computed({
+  get: () => form.due ?? "",
+  set: (value: string) => {
+    form.due = value === "" ? null : value;
+  },
+});
+
+console.log(form);
 
 const submitForm = async () => {
   if (!form.name || !form.choice1 || !form.choice2) {
@@ -81,6 +97,7 @@ const submitForm = async () => {
       form.name = "";
       form.choice1 = "";
       form.choice2 = "";
+      form.due = null;
     } else {
       throw new Error("投票の作成に失敗しました。");
     }
