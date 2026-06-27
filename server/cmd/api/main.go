@@ -37,6 +37,7 @@ func main() {
 
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
+	e.GET("/api/polls", h.GetPollsEcho)
 
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
