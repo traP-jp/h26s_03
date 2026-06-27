@@ -32,8 +32,9 @@ const saveResult = async () => {
 
 // 表示時に投票データを取得する
 onMounted(async () => {
-  poll.value = await getPoll(pollId);
-  me.value = await getMe();
+  const [pollData, meData] = await Promise.all([getPoll(pollId), getMe()]);
+  poll.value = pollData;
+  me.value = meData;
   loading.value = false;
   console.log(poll.value);
 });
@@ -61,14 +62,14 @@ const selectResult = (result: number) => {
               <h3>！編集できません！</h3>
               <p>この投票はすでに結果が確定しています</p>
             </div>
-            <RouterLink class="return-button" to="/polls/:id"> 結果に戻る＞ </RouterLink>
+            <RouterLink class="return-button" :to="`/polls/${pollId}`"> 結果に戻る＞ </RouterLink>
           </div>
           <div v-else-if="!canEdit">
             <div class="message-box">
               <h3>！編集できません！</h3>
               <p>あなたには編集権限がありません</p>
             </div>
-            <RouterLink class="return-button" to="/polls/:id"> 投票に戻る＞ </RouterLink>
+            <RouterLink class="return-button" :to="`/polls/${pollId}`"> 投票に戻る＞ </RouterLink>
           </div>
           <div v-else>
             <h2>勝った方を選択</h2>

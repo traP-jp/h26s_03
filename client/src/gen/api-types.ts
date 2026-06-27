@@ -249,8 +249,6 @@ export interface components {
     ReactionWebSocketMessage: {
       /** @enum {string} */
       type: "reaction";
-      /** @description 投票ID */
-      poll_id: string;
       /** @description ユーザー名 */
       username: string;
       /** @description リアクション */
@@ -260,8 +258,6 @@ export interface components {
     VoteWebSocketMessage: {
       /** @enum {string} */
       type: "vote";
-      /** @description 投票ID */
-      poll_id: string;
       /** @description ユーザー名 */
       username: string;
     };

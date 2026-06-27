@@ -18,6 +18,11 @@ const router = createRouter({
       name: "resultInput",
       component: () => import("./views/ResultInputView.vue"),
     },
+    {
+      path: "/polls/:id",
+      name: "pollDetail",
+      component: () => import("./views/PollDetailView.vue"),
+    },
   ],
 });
 
