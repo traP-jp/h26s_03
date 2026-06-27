@@ -23,6 +23,7 @@ import (
 
 	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
@@ -46,6 +47,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			name: "get poll by id returns not found",
 			run:  scenarioGetPollByIDReturnsNotFound,
 		},
+		{
+			name: "create poll succeeds",
+			run:  scenarioCreatePollSucceeds,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -66,6 +71,7 @@ func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	applyMigrations(t, db)
 
 	e := echo.New()
+	e.Use(authx.Soft())
 	h := handlers.New(db)
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
@@ -178,6 +184,33 @@ func seedPoll(t *testing.T, db *sqlx.DB) {
 	)
 	if err != nil {
 		t.Fatalf("seed poll: %v", err)
+	}
+}
+
+func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	body := `{"name":"昼食","choice1":"うどん","choice2":"カレー","due":null}`
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/polls", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", "alice")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request POST /api/polls: %v", err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusCreated, string(raw))
+	}
+
+	if !strings.Contains(string(raw), `"created_by":"alice"`) {
+		t.Fatalf("unexpected body: %s", string(raw))
 	}
 }
 
