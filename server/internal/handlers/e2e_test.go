@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,16 +22,17 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 	t.Parallel()
 
-	baseURL := startTestServer(t)
+	baseURL, db := startTestServer(t)
 
 	testCases := []struct {
 		name string
-		run  func(*testing.T, string)
+		run  func(*testing.T, string, *sqlx.DB)
 	}{
 		{
 			name: "initialize succeeds",
@@ -41,20 +43,20 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioGetPollsReturnsEmptyList,
 		},
 		{
-			name: "get polls alias returns empty list",
-			run:  scenarioGetPollsAliasReturnsEmptyList,
+			name: "patch poll updates selected fields",
+			run:  scenarioPatchPollUpdatesSelectedFields,
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			tc.run(t, baseURL)
+			tc.run(t, baseURL, db)
 		})
 	}
 }
 
-func startTestServer(t *testing.T) string {
+func startTestServer(t *testing.T) (string, *sqlx.DB) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -64,23 +66,25 @@ func startTestServer(t *testing.T) string {
 	applyMigrations(t, db)
 
 	e := echo.New()
+	e.Use(authx.New(authx.ModeSoft))
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
 	e.GET("/api/polls", h.GetPollsEcho)
+	e.PATCH("/api/polls/:id", h.UpdatePollEcho)
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
 
-	return srv.URL
+	return srv.URL, db
 }
 
-func scenarioInitializeSucceeds(t *testing.T, baseURL string) {
+func scenarioInitializeSucceeds(t *testing.T, baseURL string, _ *sqlx.DB) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 }
 
-func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string) {
+func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string, _ *sqlx.DB) {
 	t.Helper()
 
 	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/polls", nil)
@@ -110,17 +114,23 @@ func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string) {
 	}
 }
 
-func scenarioGetPollsAliasReturnsEmptyList(t *testing.T, baseURL string) {
+func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/polls", nil)
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	pollID := seedPoll(t, db, "owner-user")
+
+	body := strings.NewReader(`{"name":"after","result":1,"due":null}`)
+	req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/api/polls/%d", baseURL, pollID), body)
 	if err != nil {
 		t.Fatalf("create request: %v", err)
 	}
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(authx.HeaderForwardedUser, "owner-user")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("request GET %s: %v", baseURL+"/polls", err)
+		t.Fatalf("request PATCH /api/polls/%d: %v", pollID, err)
 	}
 	defer resp.Body.Close()
 
@@ -130,14 +140,48 @@ func scenarioGetPollsAliasReturnsEmptyList(t *testing.T, baseURL string) {
 	}
 
 	var got struct {
-		Data []any `json:"data"`
+		ID     int64   `json:"id"`
+		Name   string  `json:"name"`
+		Result *int    `json:"result"`
+		Due    *string `json:"due"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if len(got.Data) != 0 {
-		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
+
+	if got.ID != pollID {
+		t.Fatalf("unexpected id: got=%d want=%d", got.ID, pollID)
 	}
+	if got.Name != "after" {
+		t.Fatalf("unexpected name: got=%q want=%q", got.Name, "after")
+	}
+	if got.Result == nil || *got.Result != 1 {
+		t.Fatalf("unexpected result: got=%v want=1", got.Result)
+	}
+	if got.Due != nil {
+		t.Fatalf("unexpected due: got=%v want=nil", got.Due)
+	}
+}
+
+func seedPoll(t *testing.T, db *sqlx.DB, createdBy string) int64 {
+	t.Helper()
+
+	const query = `
+INSERT INTO polls (name, choice1, choice2, result, due, created_by, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	now := time.Now().UTC().Truncate(time.Second)
+	res, err := db.Exec(query, "before", "A", "B", nil, now, createdBy, now)
+	if err != nil {
+		t.Fatalf("insert poll: %v", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("last insert id: %v", err)
+	}
+
+	return id
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
