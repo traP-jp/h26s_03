@@ -24,7 +24,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/tasks": {
+  "/api/polls": {
     parameters: {
       query?: never;
       header?: never;
@@ -32,16 +32,108 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * タスク一覧を取得する
-     * @description 登録済みタスクの一覧を返す
+     * 投票一覧を取得する
+     * @description 誰でも自由に投票一覧を取得できる
      */
-    get: operations["getTasks"];
+    get: operations["getPolls"];
     put?: never;
     /**
-     * タスクを作成する
-     * @description 新しいタスクを登録する
+     * 投票を作成する
+     * @description 誰でも自由に投票を作成できる
      */
-    post: operations["createTask"];
+    post: operations["createPoll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/polls/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 投票を取得する
+     * @description 誰でも自由に投票を取得できる
+     */
+    get: operations["getPoll"];
+    put?: never;
+    post?: never;
+    /**
+     * 投票を削除する
+     * @description 投票の作成者のみ削除できる
+     */
+    delete: operations["deletePoll"];
+    options?: never;
+    head?: never;
+    /**
+     * 投票を編集する
+     * @description 投票の作成者のみ編集できる
+     */
+    patch: operations["updatePoll"];
+    trace?: never;
+  };
+  "/api/polls/{id}/votes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 賭け一覧を取得する
+     * @description 誰でも投票への賭け一覧を取得できる
+     */
+    get: operations["getPollVotes"];
+    put?: never;
+    /**
+     * 投票に賭ける
+     * @description 誰でもできるが、同じ投票に複数回は賭けられない
+     */
+    post: operations["createVote"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/polls/{poll_id}/votes/{vote_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * 賭けを取り消す
+     * @description 賭けをした人だけが取り消せる
+     */
+    delete: operations["deleteVote"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 自分の情報を取得する
+     * @description 誰でも自分の情報を取得できる
+     */
+    get: operations["getMe"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -52,31 +144,140 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description タスク */
-    Task: {
+    /** @description 投票 */
+    Poll: {
       /**
        * Format: int64
-       * @description タスクID
+       * @description 投票ID
        */
       id: number;
-      /** @description タスク名 */
-      title: string;
-      /** @description タスク状態 */
-      status: string;
+      /** @description 投票名 */
+      name: string;
+      /** @description 選択肢1 */
+      choice1: string;
+      /** @description 選択肢2 */
+      choice2: string;
+      /** @description 結果 */
+      result: number | null;
+      /**
+       * Format: date-time
+       * @description 期限
+       */
+      due: string | null;
+      /** @description 作成ユーザー名 */
+      created_by: string;
+      /**
+       * Format: date-time
+       * @description 作成日時
+       */
+      created_at: string;
     };
-    /** @description タスク一覧レスポンス */
-    TasksResponse: {
-      /** @description タスク一覧 */
-      data: components["schemas"]["Task"][];
+    /** @description 投票一覧レスポンス */
+    PollsResponse: {
+      /** @description 投票一覧 */
+      data: components["schemas"]["Poll"][];
     };
-    /** @description タスク作成リクエスト */
-    CreateTaskRequest: {
-      /** @description タスク名 */
-      title: string;
+    /** @description 投票作成リクエスト */
+    CreatePollRequest: {
+      /** @description 投票名 */
+      name: string;
+      /** @description 選択肢1 */
+      choice1: string;
+      /** @description 選択肢2 */
+      choice2: string;
+      /**
+       * Format: date-time
+       * @description 期限
+       */
+      due?: string | null;
     };
+    /** @description 投票更新リクエスト */
+    UpdatePollRequest: {
+      /** @description 投票名 */
+      name?: string;
+      /** @description 選択肢1 */
+      choice1?: string;
+      /** @description 選択肢2 */
+      choice2?: string;
+      /** @description 結果 */
+      result?: number | null;
+      /**
+       * Format: date-time
+       * @description 期限
+       */
+      due?: string | null;
+    };
+    /** @description 賭け */
+    Vote: {
+      /**
+       * Format: int64
+       * @description 賭けID
+       */
+      id: number;
+      /** @description ユーザー名 */
+      username: string;
+      /** @description 選んだ選択肢 */
+      choice: number;
+      /** @description いくら賭けたか */
+      bet: number;
+      /**
+       * Format: date-time
+       * @description 作成日時
+       */
+      created_at: string;
+    };
+    /** @description 賭け一覧レスポンス */
+    VotesResponse: {
+      /** @description 賭け一覧 */
+      data: components["schemas"]["Vote"][];
+    };
+    /** @description 賭け作成リクエスト */
+    CreateVoteRequest: {
+      /** @description 選んだ選択肢 */
+      choice: number;
+      /** @description いくら賭けるか */
+      bet: number;
+    };
+    /** @description 自分の情報 */
+    Me: {
+      /** @description ユーザー名 */
+      username: string;
+      /** @description 所持金 */
+      balance: number;
+    };
+    /** @description リアクション通知 */
+    ReactionWebSocketMessage: {
+      /** @enum {string} */
+      type: "reaction";
+      /** @description 投票ID */
+      poll_id: string;
+      /** @description ユーザー名 */
+      username: string;
+      /** @description リアクション */
+      reaction: string;
+    };
+    /** @description 投票通知 */
+    VoteWebSocketMessage: {
+      /** @enum {string} */
+      type: "vote";
+      /** @description 投票ID */
+      poll_id: string;
+      /** @description ユーザー名 */
+      username: string;
+    };
+    WebSocketMessage:
+      | components["schemas"]["ReactionWebSocketMessage"]
+      | components["schemas"]["VoteWebSocketMessage"];
   };
   responses: never;
-  parameters: never;
+  parameters: {
+    /** @description 投票ID */
+    PollId: number;
+    /** @description 投票ID */
+    PollIdBySnakeCase: number;
+    /** @description 賭けID */
+    VoteId: number;
+  };
   requestBodies: never;
   headers: never;
   pathItems: never;
@@ -101,7 +302,7 @@ export interface operations {
       };
     };
   };
-  getTasks: {
+  getPolls: {
     parameters: {
       query?: never;
       header?: never;
@@ -110,37 +311,275 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description タスク一覧を返した */
+      /** @description 投票一覧を返した */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["TasksResponse"];
+          "application/json": components["schemas"]["PollsResponse"];
         };
       };
     };
   };
-  createTask: {
+  createPoll: {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** @description 作成するタスクの内容 */
+    /** @description 作成する投票の内容 */
     requestBody: {
       content: {
-        "application/json": components["schemas"]["CreateTaskRequest"];
+        "application/json": components["schemas"]["CreatePollRequest"];
       };
     };
     responses: {
-      /** @description タスクの作成が完了した */
+      /** @description 投票の作成が完了した */
       201: {
         headers: {
           [name: string]: unknown;
         };
+        content: {
+          "application/json": components["schemas"]["Poll"];
+        };
+      };
+    };
+  };
+  getPoll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        id: components["parameters"]["PollId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 投票を返した */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Poll"];
+        };
+      };
+      /** @description 投票が見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
+      };
+    };
+  };
+  deletePoll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        id: components["parameters"]["PollId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 投票の削除が完了した */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 投票の作成者ではない */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 投票が見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  updatePoll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        id: components["parameters"]["PollId"];
+      };
+      cookie?: never;
+    };
+    /** @description 更新する投票の内容 */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePollRequest"];
+      };
+    };
+    responses: {
+      /** @description 投票の更新が完了した */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Poll"];
+        };
+      };
+      /** @description 投票の作成者ではない */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 投票が見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getPollVotes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        id: components["parameters"]["PollId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 賭け一覧を返した */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VotesResponse"];
+        };
+      };
+      /** @description 投票が見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createVote: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        id: components["parameters"]["PollId"];
+      };
+      cookie?: never;
+    };
+    /** @description 作成する賭けの内容 */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateVoteRequest"];
+      };
+    };
+    responses: {
+      /** @description 賭けの作成が完了した */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Vote"];
+        };
+      };
+      /** @description 投票が見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 同じ投票に既に賭けている */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  deleteVote: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 投票ID */
+        poll_id: components["parameters"]["PollIdBySnakeCase"];
+        /** @description 賭けID */
+        vote_id: components["parameters"]["VoteId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 賭けの取り消しが完了した */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 賭けをしたユーザーではない */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 投票または賭けが見つからない */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getMe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 自分の情報を返した */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Me"];
+        };
       };
     };
   };

@@ -8,24 +8,66 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
-	// CreateTask implements createTask operation.
+	// CreatePoll implements createPoll operation.
 	//
-	// 新しいタスクを登録する.
+	// 誰でも自由に投票を作成できる.
 	//
-	// POST /api/tasks
-	CreateTask(ctx context.Context, req *CreateTaskRequest) error
-	// GetTasks implements getTasks operation.
+	// POST /api/polls
+	CreatePoll(ctx context.Context, req *CreatePollRequest) (*Poll, error)
+	// CreateVote implements createVote operation.
 	//
-	// 登録済みタスクの一覧を返す.
+	// 誰でもできるが、同じ投票に複数回は賭けられない.
 	//
-	// GET /api/tasks
-	GetTasks(ctx context.Context) (*TasksResponse, error)
+	// POST /api/polls/{id}/votes
+	CreateVote(ctx context.Context, req *CreateVoteRequest, params CreateVoteParams) (CreateVoteRes, error)
+	// DeletePoll implements deletePoll operation.
+	//
+	// 投票の作成者のみ削除できる.
+	//
+	// DELETE /api/polls/{id}
+	DeletePoll(ctx context.Context, params DeletePollParams) (DeletePollRes, error)
+	// DeleteVote implements deleteVote operation.
+	//
+	// 賭けをした人だけが取り消せる.
+	//
+	// DELETE /api/polls/{poll_id}/votes/{vote_id}
+	DeleteVote(ctx context.Context, params DeleteVoteParams) (DeleteVoteRes, error)
+	// GetMe implements getMe operation.
+	//
+	// 誰でも自分の情報を取得できる.
+	//
+	// GET /api/me
+	GetMe(ctx context.Context) (*Me, error)
+	// GetPoll implements getPoll operation.
+	//
+	// 誰でも自由に投票を取得できる.
+	//
+	// GET /api/polls/{id}
+	GetPoll(ctx context.Context, params GetPollParams) (GetPollRes, error)
+	// GetPollVotes implements getPollVotes operation.
+	//
+	// 誰でも投票への賭け一覧を取得できる.
+	//
+	// GET /api/polls/{id}/votes
+	GetPollVotes(ctx context.Context, params GetPollVotesParams) (GetPollVotesRes, error)
+	// GetPolls implements getPolls operation.
+	//
+	// 誰でも自由に投票一覧を取得できる.
+	//
+	// GET /api/polls
+	GetPolls(ctx context.Context) (*PollsResponse, error)
 	// Initialize implements initialize operation.
 	//
 	// 既存データを削除し、開発用サンプルデータを再投入する.
 	//
 	// POST /api/initialize
 	Initialize(ctx context.Context) error
+	// UpdatePoll implements updatePoll operation.
+	//
+	// 投票の作成者のみ編集できる.
+	//
+	// PATCH /api/polls/{id}
+	UpdatePoll(ctx context.Context, req *UpdatePollRequest, params UpdatePollParams) (UpdatePollRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

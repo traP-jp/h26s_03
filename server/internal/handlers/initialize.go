@@ -21,11 +21,9 @@ func (h *Handler) Initialize(ctx context.Context) error {
 	defer conn.ExecContext(ctx, `SET FOREIGN_KEY_CHECKS = 1;`)
 
 	queries := []string{
-		`TRUNCATE TABLE tasks;`,
-		`INSERT INTO tasks (id, title, status) VALUES
-			(1, 'トップページの構成を考える', 'todo'),
-			(2, 'タスク追加フォームを作る', 'doing'),
-			(3, '初期化APIをつなぐ', 'done');`,
+		`TRUNCATE TABLE votes;`,
+		`TRUNCATE TABLE polls;`,
+		`TRUNCATE TABLE users;`,
 	}
 
 	for _, q := range queries {

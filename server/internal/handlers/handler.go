@@ -6,6 +6,7 @@ import (
 )
 
 type Handler struct {
+	openapi.UnimplementedHandler
 	db *sqlx.DB
 }
 

@@ -10,13 +10,154 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func encodeCreateTaskResponse(response *CreateTaskCreated, w http.ResponseWriter, span trace.Span) error {
+func encodeCreatePollResponse(response *Poll, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(201)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
 
 	return nil
 }
 
-func encodeGetTasksResponse(response *TasksResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateVoteResponse(response CreateVoteRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *Vote:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(201)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CreateVoteNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	case *CreateVoteConflict:
+		w.WriteHeader(409)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeDeletePollResponse(response DeletePollRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *DeletePollNoContent:
+		w.WriteHeader(204)
+
+		return nil
+
+	case *DeletePollForbidden:
+		w.WriteHeader(403)
+
+		return nil
+
+	case *DeletePollNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeDeleteVoteResponse(response DeleteVoteRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *DeleteVoteNoContent:
+		w.WriteHeader(204)
+
+		return nil
+
+	case *DeleteVoteForbidden:
+		w.WriteHeader(403)
+
+		return nil
+
+	case *DeleteVoteNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeGetMeResponse(response *Me, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeGetPollResponse(response GetPollRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *Poll:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetPollNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeGetPollVotesResponse(response GetPollVotesRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *VotesResponse:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetPollVotesNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeGetPollsResponse(response *PollsResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 
@@ -33,4 +174,33 @@ func encodeInitializeResponse(response *InitializeNoContent, w http.ResponseWrit
 	w.WriteHeader(204)
 
 	return nil
+}
+
+func encodeUpdatePollResponse(response UpdatePollRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *Poll:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UpdatePollForbidden:
+		w.WriteHeader(403)
+
+		return nil
+
+	case *UpdatePollNotFound:
+		w.WriteHeader(404)
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
 }

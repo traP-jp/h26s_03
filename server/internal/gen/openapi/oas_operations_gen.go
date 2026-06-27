@@ -6,7 +6,14 @@ package openapi
 type OperationName = string
 
 const (
-	CreateTaskOperation OperationName = "CreateTask"
-	GetTasksOperation   OperationName = "GetTasks"
-	InitializeOperation OperationName = "Initialize"
+	CreatePollOperation   OperationName = "CreatePoll"
+	CreateVoteOperation   OperationName = "CreateVote"
+	DeletePollOperation   OperationName = "DeletePoll"
+	DeleteVoteOperation   OperationName = "DeleteVote"
+	GetMeOperation        OperationName = "GetMe"
+	GetPollOperation      OperationName = "GetPoll"
+	GetPollVotesOperation OperationName = "GetPollVotes"
+	GetPollsOperation     OperationName = "GetPolls"
+	InitializeOperation   OperationName = "Initialize"
+	UpdatePollOperation   OperationName = "UpdatePoll"
 )

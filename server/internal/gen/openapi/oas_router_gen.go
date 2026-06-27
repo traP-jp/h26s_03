@@ -14,6 +14,12 @@ var (
 	rn1AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
+	rn3AllowedHeaders = map[string]string{
+		"PATCH": "Content-Type",
+	}
+	rn4AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
 )
 
 func (s *Server) cutPrefix(path string) (string, bool) {
@@ -46,6 +52,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	args := [2]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -91,9 +98,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-			case 't': // Prefix: "tasks"
+			case 'm': // Prefix: "me"
 
-				if l := len("tasks"); len(elem) >= l && elem[0:l] == "tasks" {
+				if l := len("me"); len(elem) >= l && elem[0:l] == "me" {
 					elem = elem[l:]
 				} else {
 					break
@@ -103,9 +110,33 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					// Leaf node.
 					switch r.Method {
 					case "GET":
-						s.handleGetTasksRequest([0]string{}, elemIsEscaped, w, r)
+						s.handleGetMeRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 'p': // Prefix: "polls"
+
+				if l := len("polls"); len(elem) >= l && elem[0:l] == "polls" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "GET":
+						s.handleGetPollsRequest([0]string{}, elemIsEscaped, w, r)
 					case "POST":
-						s.handleCreateTaskRequest([0]string{}, elemIsEscaped, w, r)
+						s.handleCreatePollRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET,POST",
@@ -116,6 +147,122 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 
 					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "DELETE":
+							s.handleDeletePollRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleGetPollRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "PATCH":
+							s.handleUpdatePollRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "DELETE,GET,PATCH",
+								allowedHeaders: rn3AllowedHeaders,
+								acceptPost:     "",
+								acceptPatch:    "application/json",
+							})
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/votes"
+
+						if l := len("/votes"); len(elem) >= l && elem[0:l] == "/votes" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleGetPollVotesRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleCreateVoteRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET,POST",
+									allowedHeaders: rn4AllowedHeaders,
+									acceptPost:     "application/json",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "vote_id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleDeleteVoteRequest([2]string{
+										args[0],
+										args[1],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "DELETE",
+										allowedHeaders: nil,
+										acceptPost:     "",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						}
+
+					}
+
 				}
 
 			}
@@ -133,7 +280,7 @@ type Route struct {
 	operationGroup string
 	pathPattern    string
 	count          int
-	args           [0]string
+	args           [2]string
 }
 
 // Name returns ogen operation name.
@@ -243,9 +390,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 				}
 
-			case 't': // Prefix: "tasks"
+			case 'm': // Prefix: "me"
 
-				if l := len("tasks"); len(elem) >= l && elem[0:l] == "tasks" {
+				if l := len("me"); len(elem) >= l && elem[0:l] == "me" {
 					elem = elem[l:]
 				} else {
 					break
@@ -255,26 +402,174 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					// Leaf node.
 					switch method {
 					case "GET":
-						r.name = GetTasksOperation
-						r.summary = "タスク一覧を取得する"
-						r.operationID = "getTasks"
+						r.name = GetMeOperation
+						r.summary = "自分の情報を取得する"
+						r.operationID = "getMe"
 						r.operationGroup = ""
-						r.pathPattern = "/api/tasks"
-						r.args = args
-						r.count = 0
-						return r, true
-					case "POST":
-						r.name = CreateTaskOperation
-						r.summary = "タスクを作成する"
-						r.operationID = "createTask"
-						r.operationGroup = ""
-						r.pathPattern = "/api/tasks"
+						r.pathPattern = "/api/me"
 						r.args = args
 						r.count = 0
 						return r, true
 					default:
 						return
 					}
+				}
+
+			case 'p': // Prefix: "polls"
+
+				if l := len("polls"); len(elem) >= l && elem[0:l] == "polls" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "GET":
+						r.name = GetPollsOperation
+						r.summary = "投票一覧を取得する"
+						r.operationID = "getPolls"
+						r.operationGroup = ""
+						r.pathPattern = "/api/polls"
+						r.args = args
+						r.count = 0
+						return r, true
+					case "POST":
+						r.name = CreatePollOperation
+						r.summary = "投票を作成する"
+						r.operationID = "createPoll"
+						r.operationGroup = ""
+						r.pathPattern = "/api/polls"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "id"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "DELETE":
+							r.name = DeletePollOperation
+							r.summary = "投票を削除する"
+							r.operationID = "deletePoll"
+							r.operationGroup = ""
+							r.pathPattern = "/api/polls/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "GET":
+							r.name = GetPollOperation
+							r.summary = "投票を取得する"
+							r.operationID = "getPoll"
+							r.operationGroup = ""
+							r.pathPattern = "/api/polls/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "PATCH":
+							r.name = UpdatePollOperation
+							r.summary = "投票を編集する"
+							r.operationID = "updatePoll"
+							r.operationGroup = ""
+							r.pathPattern = "/api/polls/{id}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/votes"
+
+						if l := len("/votes"); len(elem) >= l && elem[0:l] == "/votes" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = GetPollVotesOperation
+								r.summary = "賭け一覧を取得する"
+								r.operationID = "getPollVotes"
+								r.operationGroup = ""
+								r.pathPattern = "/api/polls/{id}/votes"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "POST":
+								r.name = CreateVoteOperation
+								r.summary = "投票に賭ける"
+								r.operationID = "createVote"
+								r.operationGroup = ""
+								r.pathPattern = "/api/polls/{id}/votes"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "vote_id"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = DeleteVoteOperation
+									r.summary = "賭けを取り消す"
+									r.operationID = "deleteVote"
+									r.operationGroup = ""
+									r.pathPattern = "/api/polls/{poll_id}/votes/{vote_id}"
+									r.args = args
+									r.count = 2
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					}
+
 				}
 
 			}

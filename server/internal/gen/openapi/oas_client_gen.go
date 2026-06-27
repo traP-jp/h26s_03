@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/ogen-go/ogen/conv"
 	ht "github.com/ogen-go/ogen/http"
 	"github.com/ogen-go/ogen/otelogen"
 	"github.com/ogen-go/ogen/uri"
@@ -27,24 +28,66 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
-	// CreateTask invokes createTask operation.
+	// CreatePoll invokes createPoll operation.
 	//
-	// 新しいタスクを登録する.
+	// 誰でも自由に投票を作成できる.
 	//
-	// POST /api/tasks
-	CreateTask(ctx context.Context, request *CreateTaskRequest) error
-	// GetTasks invokes getTasks operation.
+	// POST /api/polls
+	CreatePoll(ctx context.Context, request *CreatePollRequest) (*Poll, error)
+	// CreateVote invokes createVote operation.
 	//
-	// 登録済みタスクの一覧を返す.
+	// 誰でもできるが、同じ投票に複数回は賭けられない.
 	//
-	// GET /api/tasks
-	GetTasks(ctx context.Context) (*TasksResponse, error)
+	// POST /api/polls/{id}/votes
+	CreateVote(ctx context.Context, request *CreateVoteRequest, params CreateVoteParams) (CreateVoteRes, error)
+	// DeletePoll invokes deletePoll operation.
+	//
+	// 投票の作成者のみ削除できる.
+	//
+	// DELETE /api/polls/{id}
+	DeletePoll(ctx context.Context, params DeletePollParams) (DeletePollRes, error)
+	// DeleteVote invokes deleteVote operation.
+	//
+	// 賭けをした人だけが取り消せる.
+	//
+	// DELETE /api/polls/{poll_id}/votes/{vote_id}
+	DeleteVote(ctx context.Context, params DeleteVoteParams) (DeleteVoteRes, error)
+	// GetMe invokes getMe operation.
+	//
+	// 誰でも自分の情報を取得できる.
+	//
+	// GET /api/me
+	GetMe(ctx context.Context) (*Me, error)
+	// GetPoll invokes getPoll operation.
+	//
+	// 誰でも自由に投票を取得できる.
+	//
+	// GET /api/polls/{id}
+	GetPoll(ctx context.Context, params GetPollParams) (GetPollRes, error)
+	// GetPollVotes invokes getPollVotes operation.
+	//
+	// 誰でも投票への賭け一覧を取得できる.
+	//
+	// GET /api/polls/{id}/votes
+	GetPollVotes(ctx context.Context, params GetPollVotesParams) (GetPollVotesRes, error)
+	// GetPolls invokes getPolls operation.
+	//
+	// 誰でも自由に投票一覧を取得できる.
+	//
+	// GET /api/polls
+	GetPolls(ctx context.Context) (*PollsResponse, error)
 	// Initialize invokes initialize operation.
 	//
 	// 既存データを削除し、開発用サンプルデータを再投入する.
 	//
 	// POST /api/initialize
 	Initialize(ctx context.Context) error
+	// UpdatePoll invokes updatePoll operation.
+	//
+	// 投票の作成者のみ編集できる.
+	//
+	// PATCH /api/polls/{id}
+	UpdatePoll(ctx context.Context, request *UpdatePollRequest, params UpdatePollParams) (UpdatePollRes, error)
 }
 
 // Client implements OAS client.
@@ -86,21 +129,21 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 	return u
 }
 
-// CreateTask invokes createTask operation.
+// CreatePoll invokes createPoll operation.
 //
-// 新しいタスクを登録する.
+// 誰でも自由に投票を作成できる.
 //
-// POST /api/tasks
-func (c *Client) CreateTask(ctx context.Context, request *CreateTaskRequest) error {
-	_, err := c.sendCreateTask(ctx, request)
-	return err
+// POST /api/polls
+func (c *Client) CreatePoll(ctx context.Context, request *CreatePollRequest) (*Poll, error) {
+	res, err := c.sendCreatePoll(ctx, request)
+	return res, err
 }
 
-func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest) (res *CreateTaskCreated, err error) {
+func (c *Client) sendCreatePoll(ctx context.Context, request *CreatePollRequest) (res *Poll, err error) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("createTask"),
+		otelogen.OperationID("createPoll"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.URLTemplateKey.String("/api/tasks"),
+		semconv.URLTemplateKey.String("/api/polls"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -116,7 +159,7 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
 
 	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, CreateTaskOperation,
+	ctx, span := c.cfg.Tracer.Start(ctx, CreatePollOperation,
 		trace.WithAttributes(otelAttrs...),
 		clientSpanKind,
 	)
@@ -134,7 +177,7 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
-	pathParts[0] = "/api/tasks"
+	pathParts[0] = "/api/polls"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -142,7 +185,7 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	if err != nil {
 		return res, errors.Wrap(err, "create request")
 	}
-	if err := encodeCreateTaskRequest(request, r); err != nil {
+	if err := encodeCreatePollRequest(request, r); err != nil {
 		return res, errors.Wrap(err, "encode request")
 	}
 
@@ -161,7 +204,7 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	}()
 
 	stage = "DecodeResponse"
-	result, err := decodeCreateTaskResponse(resp)
+	result, err := decodeCreatePollResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -169,21 +212,21 @@ func (c *Client) sendCreateTask(ctx context.Context, request *CreateTaskRequest)
 	return result, nil
 }
 
-// GetTasks invokes getTasks operation.
+// CreateVote invokes createVote operation.
 //
-// 登録済みタスクの一覧を返す.
+// 誰でもできるが、同じ投票に複数回は賭けられない.
 //
-// GET /api/tasks
-func (c *Client) GetTasks(ctx context.Context) (*TasksResponse, error) {
-	res, err := c.sendGetTasks(ctx)
+// POST /api/polls/{id}/votes
+func (c *Client) CreateVote(ctx context.Context, request *CreateVoteRequest, params CreateVoteParams) (CreateVoteRes, error) {
+	res, err := c.sendCreateVote(ctx, request, params)
 	return res, err
 }
 
-func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err error) {
+func (c *Client) sendCreateVote(ctx context.Context, request *CreateVoteRequest, params CreateVoteParams) (res CreateVoteRes, err error) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getTasks"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/api/tasks"),
+		otelogen.OperationID("createVote"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/api/polls/{id}/votes"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -199,7 +242,324 @@ func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err erro
 	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
 
 	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, GetTasksOperation,
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateVoteOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/votes"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateVoteRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateVoteResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DeletePoll invokes deletePoll operation.
+//
+// 投票の作成者のみ削除できる.
+//
+// DELETE /api/polls/{id}
+func (c *Client) DeletePoll(ctx context.Context, params DeletePollParams) (DeletePollRes, error) {
+	res, err := c.sendDeletePoll(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeletePoll(ctx context.Context, params DeletePollParams) (res DeletePollRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("deletePoll"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/api/polls/{id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DeletePollOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDeletePollResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DeleteVote invokes deleteVote operation.
+//
+// 賭けをした人だけが取り消せる.
+//
+// DELETE /api/polls/{poll_id}/votes/{vote_id}
+func (c *Client) DeleteVote(ctx context.Context, params DeleteVoteParams) (DeleteVoteRes, error) {
+	res, err := c.sendDeleteVote(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteVote(ctx context.Context, params DeleteVoteParams) (res DeleteVoteRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("deleteVote"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/api/polls/{poll_id}/votes/{vote_id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DeleteVoteOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "poll_id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "poll_id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.PollID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/votes/"
+	{
+		// Encode "vote_id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "vote_id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.VoteID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDeleteVoteResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetMe invokes getMe operation.
+//
+// 誰でも自分の情報を取得できる.
+//
+// GET /api/me
+func (c *Client) GetMe(ctx context.Context) (*Me, error) {
+	res, err := c.sendGetMe(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetMe(ctx context.Context) (res *Me, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getMe"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/api/me"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetMeOperation,
 		trace.WithAttributes(otelAttrs...),
 		clientSpanKind,
 	)
@@ -217,7 +577,7 @@ func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err erro
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
-	pathParts[0] = "/api/tasks"
+	pathParts[0] = "/api/me"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -241,7 +601,284 @@ func (c *Client) sendGetTasks(ctx context.Context) (res *TasksResponse, err erro
 	}()
 
 	stage = "DecodeResponse"
-	result, err := decodeGetTasksResponse(resp)
+	result, err := decodeGetMeResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPoll invokes getPoll operation.
+//
+// 誰でも自由に投票を取得できる.
+//
+// GET /api/polls/{id}
+func (c *Client) GetPoll(ctx context.Context, params GetPollParams) (GetPollRes, error) {
+	res, err := c.sendGetPoll(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetPoll(ctx context.Context, params GetPollParams) (res GetPollRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPoll"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/api/polls/{id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPollOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPollResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPollVotes invokes getPollVotes operation.
+//
+// 誰でも投票への賭け一覧を取得できる.
+//
+// GET /api/polls/{id}/votes
+func (c *Client) GetPollVotes(ctx context.Context, params GetPollVotesParams) (GetPollVotesRes, error) {
+	res, err := c.sendGetPollVotes(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetPollVotes(ctx context.Context, params GetPollVotesParams) (res GetPollVotesRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPollVotes"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/api/polls/{id}/votes"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPollVotesOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/votes"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPollVotesResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPolls invokes getPolls operation.
+//
+// 誰でも自由に投票一覧を取得できる.
+//
+// GET /api/polls
+func (c *Client) GetPolls(ctx context.Context) (*PollsResponse, error) {
+	res, err := c.sendGetPolls(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetPolls(ctx context.Context) (res *PollsResponse, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getPolls"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/api/polls"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetPollsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/api/polls"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPollsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -322,6 +959,107 @@ func (c *Client) sendInitialize(ctx context.Context) (res *InitializeNoContent, 
 
 	stage = "DecodeResponse"
 	result, err := decodeInitializeResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdatePoll invokes updatePoll operation.
+//
+// 投票の作成者のみ編集できる.
+//
+// PATCH /api/polls/{id}
+func (c *Client) UpdatePoll(ctx context.Context, request *UpdatePollRequest, params UpdatePollParams) (UpdatePollRes, error) {
+	res, err := c.sendUpdatePoll(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdatePoll(ctx context.Context, request *UpdatePollRequest, params UpdatePollParams) (res UpdatePollRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updatePoll"),
+		semconv.HTTPRequestMethodKey.String("PATCH"),
+		semconv.URLTemplateKey.String("/api/polls/{id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdatePollOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/api/polls/"
+	{
+		// Encode "id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.Int64ToString(params.ID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdatePollRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdatePollResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

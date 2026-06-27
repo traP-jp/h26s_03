@@ -28,7 +28,7 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderContentType, authx.HeaderForwardedUser},
 		AllowOrigins: []string{"*"},
 	}))
@@ -36,8 +36,6 @@ func main() {
 
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/tasks", h.GetTasksEcho)
-	e.POST("/api/tasks", h.CreateTaskEcho)
 
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {

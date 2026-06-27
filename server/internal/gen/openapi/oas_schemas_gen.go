@@ -2,83 +2,724 @@
 
 package openapi
 
-// CreateTaskCreated is response for CreateTask operation.
-type CreateTaskCreated struct{}
+import (
+	"time"
+)
 
-// タスク作成リクエスト.
-// Ref: #/components/schemas/CreateTaskRequest
-type CreateTaskRequest struct {
-	// タスク名.
-	Title string `json:"title"`
+// 投票作成リクエスト.
+// Ref: #/components/schemas/CreatePollRequest
+type CreatePollRequest struct {
+	// 投票名.
+	Name string `json:"name"`
+	// 選択肢1.
+	Choice1 string `json:"choice1"`
+	// 選択肢2.
+	Choice2 string `json:"choice2"`
+	// 期限.
+	Due OptNilDateTime `json:"due"`
 }
 
-// GetTitle returns the value of Title.
-func (s *CreateTaskRequest) GetTitle() string {
-	return s.Title
+// GetName returns the value of Name.
+func (s *CreatePollRequest) GetName() string {
+	return s.Name
 }
 
-// SetTitle sets the value of Title.
-func (s *CreateTaskRequest) SetTitle(val string) {
-	s.Title = val
+// GetChoice1 returns the value of Choice1.
+func (s *CreatePollRequest) GetChoice1() string {
+	return s.Choice1
 }
+
+// GetChoice2 returns the value of Choice2.
+func (s *CreatePollRequest) GetChoice2() string {
+	return s.Choice2
+}
+
+// GetDue returns the value of Due.
+func (s *CreatePollRequest) GetDue() OptNilDateTime {
+	return s.Due
+}
+
+// SetName sets the value of Name.
+func (s *CreatePollRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetChoice1 sets the value of Choice1.
+func (s *CreatePollRequest) SetChoice1(val string) {
+	s.Choice1 = val
+}
+
+// SetChoice2 sets the value of Choice2.
+func (s *CreatePollRequest) SetChoice2(val string) {
+	s.Choice2 = val
+}
+
+// SetDue sets the value of Due.
+func (s *CreatePollRequest) SetDue(val OptNilDateTime) {
+	s.Due = val
+}
+
+// CreateVoteConflict is response for CreateVote operation.
+type CreateVoteConflict struct{}
+
+func (*CreateVoteConflict) createVoteRes() {}
+
+// CreateVoteNotFound is response for CreateVote operation.
+type CreateVoteNotFound struct{}
+
+func (*CreateVoteNotFound) createVoteRes() {}
+
+// 賭け作成リクエスト.
+// Ref: #/components/schemas/CreateVoteRequest
+type CreateVoteRequest struct {
+	// 選んだ選択肢.
+	Choice int `json:"choice"`
+	// いくら賭けるか.
+	Bet int `json:"bet"`
+}
+
+// GetChoice returns the value of Choice.
+func (s *CreateVoteRequest) GetChoice() int {
+	return s.Choice
+}
+
+// GetBet returns the value of Bet.
+func (s *CreateVoteRequest) GetBet() int {
+	return s.Bet
+}
+
+// SetChoice sets the value of Choice.
+func (s *CreateVoteRequest) SetChoice(val int) {
+	s.Choice = val
+}
+
+// SetBet sets the value of Bet.
+func (s *CreateVoteRequest) SetBet(val int) {
+	s.Bet = val
+}
+
+// DeletePollForbidden is response for DeletePoll operation.
+type DeletePollForbidden struct{}
+
+func (*DeletePollForbidden) deletePollRes() {}
+
+// DeletePollNoContent is response for DeletePoll operation.
+type DeletePollNoContent struct{}
+
+func (*DeletePollNoContent) deletePollRes() {}
+
+// DeletePollNotFound is response for DeletePoll operation.
+type DeletePollNotFound struct{}
+
+func (*DeletePollNotFound) deletePollRes() {}
+
+// DeleteVoteForbidden is response for DeleteVote operation.
+type DeleteVoteForbidden struct{}
+
+func (*DeleteVoteForbidden) deleteVoteRes() {}
+
+// DeleteVoteNoContent is response for DeleteVote operation.
+type DeleteVoteNoContent struct{}
+
+func (*DeleteVoteNoContent) deleteVoteRes() {}
+
+// DeleteVoteNotFound is response for DeleteVote operation.
+type DeleteVoteNotFound struct{}
+
+func (*DeleteVoteNotFound) deleteVoteRes() {}
+
+// GetPollNotFound is response for GetPoll operation.
+type GetPollNotFound struct{}
+
+func (*GetPollNotFound) getPollRes() {}
+
+// GetPollVotesNotFound is response for GetPollVotes operation.
+type GetPollVotesNotFound struct{}
+
+func (*GetPollVotesNotFound) getPollVotesRes() {}
 
 // InitializeNoContent is response for Initialize operation.
 type InitializeNoContent struct{}
 
-// タスク.
-// Ref: #/components/schemas/Task
-type Task struct {
-	// タスクID.
+// 自分の情報.
+// Ref: #/components/schemas/Me
+type Me struct {
+	// ユーザー名.
+	Username string `json:"username"`
+	// 所持金.
+	Balance int `json:"balance"`
+}
+
+// GetUsername returns the value of Username.
+func (s *Me) GetUsername() string {
+	return s.Username
+}
+
+// GetBalance returns the value of Balance.
+func (s *Me) GetBalance() int {
+	return s.Balance
+}
+
+// SetUsername sets the value of Username.
+func (s *Me) SetUsername(val string) {
+	s.Username = val
+}
+
+// SetBalance sets the value of Balance.
+func (s *Me) SetBalance(val int) {
+	s.Balance = val
+}
+
+// NewNilDateTime returns new NilDateTime with value set to v.
+func NewNilDateTime(v time.Time) NilDateTime {
+	return NilDateTime{
+		Value: v,
+	}
+}
+
+// NilDateTime is nullable time.Time.
+type NilDateTime struct {
+	Value time.Time
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilDateTime) SetTo(v time.Time) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilDateTime) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilDateTime) SetToNull() {
+	o.Null = true
+	var v time.Time
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilDateTime) Get() (v time.Time, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewNilInt returns new NilInt with value set to v.
+func NewNilInt(v int) NilInt {
+	return NilInt{
+		Value: v,
+	}
+}
+
+// NilInt is nullable int.
+type NilInt struct {
+	Value int
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilInt) SetTo(v int) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilInt) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilInt) SetToNull() {
+	o.Null = true
+	var v int
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilInt) Get() (v int, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptNilDateTime returns new OptNilDateTime with value set to v.
+func NewOptNilDateTime(v time.Time) OptNilDateTime {
+	return OptNilDateTime{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNilDateTime is optional nullable time.Time.
+type OptNilDateTime struct {
+	Value time.Time
+	Set   bool
+	Null  bool
+}
+
+// IsSet returns true if OptNilDateTime was set.
+func (o OptNilDateTime) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNilDateTime) Reset() {
+	var v time.Time
+	o.Value = v
+	o.Set = false
+	o.Null = false
+}
+
+// SetTo sets value to v.
+func (o *OptNilDateTime) SetTo(v time.Time) {
+	o.Set = true
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o OptNilDateTime) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *OptNilDateTime) SetToNull() {
+	o.Set = true
+	o.Null = true
+	var v time.Time
+	o.Value = v
+}
+
+// IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
+func (o OptNilDateTime) IsEmpty() bool {
+	return !o.Set && !o.Null
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNilDateTime) Get() (v time.Time, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNilDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptNilInt returns new OptNilInt with value set to v.
+func NewOptNilInt(v int) OptNilInt {
+	return OptNilInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNilInt is optional nullable int.
+type OptNilInt struct {
+	Value int
+	Set   bool
+	Null  bool
+}
+
+// IsSet returns true if OptNilInt was set.
+func (o OptNilInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNilInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+	o.Null = false
+}
+
+// SetTo sets value to v.
+func (o *OptNilInt) SetTo(v int) {
+	o.Set = true
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o OptNilInt) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *OptNilInt) SetToNull() {
+	o.Set = true
+	o.Null = true
+	var v int
+	o.Value = v
+}
+
+// IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
+func (o OptNilInt) IsEmpty() bool {
+	return !o.Set && !o.Null
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNilInt) Get() (v int, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNilInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptString returns new OptString with value set to v.
+func NewOptString(v string) OptString {
+	return OptString{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptString is optional string.
+type OptString struct {
+	Value string
+	Set   bool
+}
+
+// IsSet returns true if OptString was set.
+func (o OptString) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptString) Reset() {
+	var v string
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptString) SetTo(v string) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptString) Get() (v string, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptString) Or(d string) string {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// 投票.
+// Ref: #/components/schemas/Poll
+type Poll struct {
+	// 投票ID.
 	ID int64 `json:"id"`
-	// タスク名.
-	Title string `json:"title"`
-	// タスク状態.
-	Status string `json:"status"`
+	// 投票名.
+	Name string `json:"name"`
+	// 選択肢1.
+	Choice1 string `json:"choice1"`
+	// 選択肢2.
+	Choice2 string `json:"choice2"`
+	// 結果.
+	Result NilInt `json:"result"`
+	// 期限.
+	Due NilDateTime `json:"due"`
+	// 作成ユーザー名.
+	CreatedBy string `json:"created_by"`
+	// 作成日時.
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // GetID returns the value of ID.
-func (s *Task) GetID() int64 {
+func (s *Poll) GetID() int64 {
 	return s.ID
 }
 
-// GetTitle returns the value of Title.
-func (s *Task) GetTitle() string {
-	return s.Title
+// GetName returns the value of Name.
+func (s *Poll) GetName() string {
+	return s.Name
 }
 
-// GetStatus returns the value of Status.
-func (s *Task) GetStatus() string {
-	return s.Status
+// GetChoice1 returns the value of Choice1.
+func (s *Poll) GetChoice1() string {
+	return s.Choice1
+}
+
+// GetChoice2 returns the value of Choice2.
+func (s *Poll) GetChoice2() string {
+	return s.Choice2
+}
+
+// GetResult returns the value of Result.
+func (s *Poll) GetResult() NilInt {
+	return s.Result
+}
+
+// GetDue returns the value of Due.
+func (s *Poll) GetDue() NilDateTime {
+	return s.Due
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *Poll) GetCreatedBy() string {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Poll) GetCreatedAt() time.Time {
+	return s.CreatedAt
 }
 
 // SetID sets the value of ID.
-func (s *Task) SetID(val int64) {
+func (s *Poll) SetID(val int64) {
 	s.ID = val
 }
 
-// SetTitle sets the value of Title.
-func (s *Task) SetTitle(val string) {
-	s.Title = val
+// SetName sets the value of Name.
+func (s *Poll) SetName(val string) {
+	s.Name = val
 }
 
-// SetStatus sets the value of Status.
-func (s *Task) SetStatus(val string) {
-	s.Status = val
+// SetChoice1 sets the value of Choice1.
+func (s *Poll) SetChoice1(val string) {
+	s.Choice1 = val
 }
 
-// タスク一覧レスポンス.
-// Ref: #/components/schemas/TasksResponse
-type TasksResponse struct {
-	// タスク一覧.
-	Data []Task `json:"data"`
+// SetChoice2 sets the value of Choice2.
+func (s *Poll) SetChoice2(val string) {
+	s.Choice2 = val
+}
+
+// SetResult sets the value of Result.
+func (s *Poll) SetResult(val NilInt) {
+	s.Result = val
+}
+
+// SetDue sets the value of Due.
+func (s *Poll) SetDue(val NilDateTime) {
+	s.Due = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *Poll) SetCreatedBy(val string) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Poll) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*Poll) getPollRes()    {}
+func (*Poll) updatePollRes() {}
+
+// 投票一覧レスポンス.
+// Ref: #/components/schemas/PollsResponse
+type PollsResponse struct {
+	// 投票一覧.
+	Data []Poll `json:"data"`
 }
 
 // GetData returns the value of Data.
-func (s *TasksResponse) GetData() []Task {
+func (s *PollsResponse) GetData() []Poll {
 	return s.Data
 }
 
 // SetData sets the value of Data.
-func (s *TasksResponse) SetData(val []Task) {
+func (s *PollsResponse) SetData(val []Poll) {
 	s.Data = val
 }
+
+// UpdatePollForbidden is response for UpdatePoll operation.
+type UpdatePollForbidden struct{}
+
+func (*UpdatePollForbidden) updatePollRes() {}
+
+// UpdatePollNotFound is response for UpdatePoll operation.
+type UpdatePollNotFound struct{}
+
+func (*UpdatePollNotFound) updatePollRes() {}
+
+// 投票更新リクエスト.
+// Ref: #/components/schemas/UpdatePollRequest
+type UpdatePollRequest struct {
+	// 投票名.
+	Name OptString `json:"name"`
+	// 選択肢1.
+	Choice1 OptString `json:"choice1"`
+	// 選択肢2.
+	Choice2 OptString `json:"choice2"`
+	// 結果.
+	Result OptNilInt `json:"result"`
+	// 期限.
+	Due OptNilDateTime `json:"due"`
+}
+
+// GetName returns the value of Name.
+func (s *UpdatePollRequest) GetName() OptString {
+	return s.Name
+}
+
+// GetChoice1 returns the value of Choice1.
+func (s *UpdatePollRequest) GetChoice1() OptString {
+	return s.Choice1
+}
+
+// GetChoice2 returns the value of Choice2.
+func (s *UpdatePollRequest) GetChoice2() OptString {
+	return s.Choice2
+}
+
+// GetResult returns the value of Result.
+func (s *UpdatePollRequest) GetResult() OptNilInt {
+	return s.Result
+}
+
+// GetDue returns the value of Due.
+func (s *UpdatePollRequest) GetDue() OptNilDateTime {
+	return s.Due
+}
+
+// SetName sets the value of Name.
+func (s *UpdatePollRequest) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetChoice1 sets the value of Choice1.
+func (s *UpdatePollRequest) SetChoice1(val OptString) {
+	s.Choice1 = val
+}
+
+// SetChoice2 sets the value of Choice2.
+func (s *UpdatePollRequest) SetChoice2(val OptString) {
+	s.Choice2 = val
+}
+
+// SetResult sets the value of Result.
+func (s *UpdatePollRequest) SetResult(val OptNilInt) {
+	s.Result = val
+}
+
+// SetDue sets the value of Due.
+func (s *UpdatePollRequest) SetDue(val OptNilDateTime) {
+	s.Due = val
+}
+
+// 賭け.
+// Ref: #/components/schemas/Vote
+type Vote struct {
+	// 賭けID.
+	ID int64 `json:"id"`
+	// ユーザー名.
+	Username string `json:"username"`
+	// 選んだ選択肢.
+	Choice int `json:"choice"`
+	// いくら賭けたか.
+	Bet int `json:"bet"`
+	// 作成日時.
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetID returns the value of ID.
+func (s *Vote) GetID() int64 {
+	return s.ID
+}
+
+// GetUsername returns the value of Username.
+func (s *Vote) GetUsername() string {
+	return s.Username
+}
+
+// GetChoice returns the value of Choice.
+func (s *Vote) GetChoice() int {
+	return s.Choice
+}
+
+// GetBet returns the value of Bet.
+func (s *Vote) GetBet() int {
+	return s.Bet
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Vote) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *Vote) SetID(val int64) {
+	s.ID = val
+}
+
+// SetUsername sets the value of Username.
+func (s *Vote) SetUsername(val string) {
+	s.Username = val
+}
+
+// SetChoice sets the value of Choice.
+func (s *Vote) SetChoice(val int) {
+	s.Choice = val
+}
+
+// SetBet sets the value of Bet.
+func (s *Vote) SetBet(val int) {
+	s.Bet = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Vote) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*Vote) createVoteRes() {}
+
+// 賭け一覧レスポンス.
+// Ref: #/components/schemas/VotesResponse
+type VotesResponse struct {
+	// 賭け一覧.
+	Data []Vote `json:"data"`
+}
+
+// GetData returns the value of Data.
+func (s *VotesResponse) GetData() []Vote {
+	return s.Data
+}
+
+// SetData sets the value of Data.
+func (s *VotesResponse) SetData(val []Vote) {
+	s.Data = val
+}
+
+func (*VotesResponse) getPollVotesRes() {}
