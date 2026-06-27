@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <div class="header">
-      <router-link to="/" class="back-link">＜ 戻る</router-link>
+      <RouterLink to="/" class="back-link">＜ 戻る</RouterLink>
       <h1>新しい投票を作成</h1>
     </div>
     <div class="form-container">
@@ -90,7 +90,6 @@ const submitForm = async () => {
   try {
     const res = await createPoll(form);
     if (res) {
-      console.log(res);
       router.push(`/polls/${res.id}`);
       form.name = "";
       form.choice1 = "";
