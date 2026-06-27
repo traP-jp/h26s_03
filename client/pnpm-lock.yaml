@@ -42,6 +42,9 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      valibot:
+        specifier: 1.4.1
+        version: 1.4.1(typescript@6.0.3)
       vite:
         specifier: 8.0.16
         version: 8.0.16(@types/node@26.0.1)(esbuild@0.27.7)(yaml@2.9.0)
@@ -1645,6 +1648,14 @@ packages:
   uri-js-replace@1.0.1:
     resolution: {integrity: sha512-W+C9NWNLFOoBI2QWDp4UT9pv65r2w5Cx+3sTYFvtMdDBxkKt1syCqsUdSFAChbEe1uK5TfS04wt/nGwmaeIQ0g==}
 
+  valibot@1.4.1:
+    resolution: {integrity: sha512-klCmFTz2jeDluy9RwX+F884TCiogtdBJ/YaxSx1EOBYXa3NXNWj8kR1jjN8rzluwojJVWWaHJ4r1U5LfICnM3g==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   vite-plus@0.2.1:
     resolution: {integrity: sha512-q5q/Y38UkWFsNg1JO+RyRdPUqoewaSqIlMyK2p83GKNUvf4D38Ntb3PToRTDZbTRh7mWt+B+d0DQBv4nCDpMcQ==}
     engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
@@ -3125,6 +3136,10 @@ snapshots:
   until-async@3.0.2: {}
 
   uri-js-replace@1.0.1: {}
+
+  valibot@1.4.1(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   vite-plus@0.2.1(@types/node@26.0.1)(esbuild@0.27.7)(msw@2.14.6(@types/node@26.0.1)(typescript@6.0.3))(typescript@6.0.3)(vite@8.0.16(@types/node@26.0.1)(esbuild@0.27.7)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:

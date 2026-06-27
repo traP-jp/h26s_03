@@ -37,7 +37,7 @@ func main() {
 
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
-	
+
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
 		log.Fatalf("failed to create openapi server: %v", err)

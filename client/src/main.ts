@@ -5,7 +5,7 @@ import router from "./router";
 
 import "./style.css";
 
-async function enableMocking() {
+const enableMocking = async () => {
   if (!import.meta.env.DEV || import.meta.env.VITE_API_MOCKING === "false") {
     return;
   }
@@ -15,7 +15,7 @@ async function enableMocking() {
   return worker.start({
     onUnhandledRequest: "bypass",
   });
-}
+};
 
 void enableMocking().then(() => {
   createApp(App).use(router).mount("#app");
