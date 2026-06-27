@@ -19,10 +19,11 @@ const saveResult = async () => {
   console.log(selectedResult.value);
 };
 
-// 決定ボタンが押されたときに呼ばれる関数
+// 投票データを取得する
 onMounted(async () => {
   poll.value = await getPoll(pollId);
 });
+
 // 結果を選択する関数
 const selectResult = (result: number) => {
   selectedResult.value = result;
@@ -31,7 +32,7 @@ const selectResult = (result: number) => {
 <template>
   <div>
     <div class="background">
-      <div class="resultinputpage">
+      <div class="result-input-page">
         <h1>投票を編集</h1>
         <h2>勝った方を選択</h2>
         <button
@@ -64,7 +65,7 @@ const selectResult = (result: number) => {
   justify-content: center;
 }
 
-.resultinputpage {
+.result-input-page {
   min-height: 100vh;
   width: 100%;
   display: flex;
