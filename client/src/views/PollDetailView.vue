@@ -1,7 +1,14 @@
 <template>
   <div class="page-container">
     <div class="header">
-      <router-link to="/" class="back-link">＜ 戻る</router-link>
+      <Router-link to="/" class="back-link">＜ 戻る</Router-link>
+      <RouterLink
+        :to="`/polls/${pollId}/input`"
+        class="edit-link"
+        v-if="me?.username === poll?.created_by"
+      >
+        <img :src="editIcon" alt="編集" class="edit-icon" />
+      </RouterLink>
       <h1>{{ poll?.name }}</h1>
     </div>
     <div class="main-container">
@@ -15,18 +22,14 @@
           {{ poll?.choice1 }}
         </button>
         <div class="avatar-container">
-          <div
+          <img
             v-for="vote in choice1Votes"
             :key="vote.id"
             class="avatar"
             :data-name="vote.username"
             :title="vote.username"
-          >
-            <img
-              :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
-              class="avatar"
-            />
-          </div>
+            :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
+          />
         </div>
       </div>
       <div class="select-container">
@@ -39,17 +42,14 @@
           {{ poll?.choice2 }}
         </button>
         <div class="avatar-container">
-          <div
+          <img
             v-for="vote in choice2Votes"
             :key="vote.id"
             :data-name="vote.username"
             :title="vote.username"
-          >
-            <img
-              :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
-              class="avatar"
-            />
-          </div>
+            :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
+            class="avatar"
+          />
         </div>
       </div>
     </div>
@@ -60,6 +60,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
+import editIcon from "../assets/editIcon.svg";
 import type { components } from "../gen/api-types";
 import { createVote, deleteVote, getMe, getPoll, getVotes } from "../lib/api";
 
@@ -86,17 +87,9 @@ const myVote = computed(() => {
   return votes.value.find((vote) => vote.username === me.value!.username) ?? null;
 });
 
-const fetchPollDetail = async () => {
-  const data = await getPoll(Number(pollId));
-  poll.value = data;
-};
 const fetchVoteList = async () => {
   const data = await getVotes(Number(pollId));
   votes.value = data;
-};
-const fetchMe = async () => {
-  const data = await getMe();
-  me.value = data;
 };
 
 const fetchPageData = async () => {
@@ -104,7 +97,18 @@ const fetchPageData = async () => {
   errorMessage.value = "";
 
   try {
-    await Promise.all([fetchPollDetail(), fetchVoteList(), fetchMe()]);
+    const [pollData, voteData, meData] = await Promise.all([
+      getPoll(Number(pollId)),
+      getVotes(Number(pollId)),
+      getMe(),
+    ]);
+
+    poll.value = pollData;
+    votes.value = voteData;
+    me.value = meData;
+    if (myVote.value) {
+      selectedChoice.value = myVote.value.choice;
+    }
   } catch (error) {
     console.error(error);
     errorMessage.value = "投票情報の取得に失敗しました。";
@@ -148,6 +152,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 20px;
   margin-bottom: 20px;
 }
 .back-link {
@@ -156,6 +161,18 @@ onMounted(() => {
   text-decoration: none;
   color: #ffffff;
 }
+.edit-link {
+  align-self: flex-end;
+  margin: 10px;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.edit-icon {
+  width: 24px;
+  height: 24px;
+}
+
 .main-container {
   display: flex;
   flex-direction: column;

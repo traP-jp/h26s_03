@@ -98,12 +98,12 @@ export const createVote = async (pollId: number, choice: number, bet: number) =>
   return data;
 };
 
-export const deleteVote = async (poll_id: number, vote_id: number) => {
+export const deleteVote = async (pollId: number, voteId: number) => {
   const { error } = await client.DELETE("/api/polls/{poll_id}/votes/{vote_id}", {
     params: {
       path: {
-        poll_id,
-        vote_id,
+        poll_id: pollId,
+        vote_id: voteId,
       },
     },
   });
