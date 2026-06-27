@@ -15,8 +15,7 @@ type Me = components["schemas"]["Me"];
 
 type MockVote = Vote & { poll_id: number };
 
-const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
-const http = createOpenApiHttp<paths>({ baseUrl: apiBase });
+const http = createOpenApiHttp<paths>();
 
 const choiceSchema = v.union([v.literal(1), v.literal(2)]);
 const createPollRequestSchema: v.GenericSchema<CreatePollRequest> = v.object({
