@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,6 +36,14 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			name: "initialize succeeds",
 			run:  scenarioInitializeSucceeds,
 		},
+		{
+			name: "get polls returns empty list",
+			run:  scenarioGetPollsReturnsEmptyList,
+		},
+		{
+			name: "get polls alias returns empty list",
+			run:  scenarioGetPollsAliasReturnsEmptyList,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -57,6 +66,8 @@ func startTestServer(t *testing.T) string {
 	e := echo.New()
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
+	e.GET("/api/polls", h.GetPollsEcho)
+	e.GET("/polls", h.GetPollsChapterEcho)
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -68,6 +79,66 @@ func scenarioInitializeSucceeds(t *testing.T, baseURL string) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+}
+
+func scenarioGetPollsReturnsEmptyList(t *testing.T, baseURL string) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/polls", nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request GET %s: %v", baseURL+"/api/polls", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+
+	var got struct {
+		Data []any `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(got.Data) != 0 {
+		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
+	}
+}
+
+func scenarioGetPollsAliasReturnsEmptyList(t *testing.T, baseURL string) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/polls", nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request GET %s: %v", baseURL+"/polls", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+
+	var got struct {
+		Data []any `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(got.Data) != 0 {
+		t.Fatalf("unexpected data length: got=%d want=0", len(got.Data))
+	}
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
