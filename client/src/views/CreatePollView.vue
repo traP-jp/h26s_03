@@ -77,8 +77,6 @@ const dueModel = computed({
   },
 });
 
-console.log(form);
-
 const submitForm = async () => {
   if (!form.name || !form.choice1 || !form.choice2) {
     alert("投票名と選択肢1, 2は必須です。");

@@ -51,6 +51,18 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			name: "create poll succeeds",
 			run:  scenarioCreatePollSucceeds,
 		},
+		{
+			name: "delete poll succeeds",
+			run:  scenarioDeletePollSucceeds,
+		},
+		{
+			name: "delete poll returns forbidden",
+			run:  scenarioDeletePollReturnsForbidden,
+		},
+		{
+			name: "delete poll returns not found",
+			run:  scenarioDeletePollReturnsNotFound,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -214,6 +226,31 @@ func scenarioCreatePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	}
 }
 
+func scenarioDeletePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "traq_user", http.StatusNoContent)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusNotFound)
+}
+
+func scenarioDeletePollReturnsForbidden(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1", "alice", http.StatusForbidden)
+	mustRequestNoBody(t, http.MethodGet, baseURL+"/api/polls/1", http.StatusOK)
+}
+
+func scenarioDeletePollReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/999", "traq_user", http.StatusNotFound)
+}
+
 func startMySQL(t *testing.T, ctx context.Context) string {
 	t.Helper()
 
@@ -308,6 +345,27 @@ func mustRequestNoBody(t *testing.T, method, url string, expectedStatus int) {
 	if err != nil {
 		t.Fatalf("create request: %v", err)
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request %s %s: %v", method, url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
+	}
+}
+
+func mustRequestNoBodyWithUser(t *testing.T, method, url, user string, expectedStatus int) {
+	t.Helper()
+
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("X-Forwarded-User", user)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
