@@ -23,7 +23,7 @@
           v-model="form.choice1"
           type="text"
           class="form-input"
-          placeholder="選択肢1"
+          placeholder="例) 日本"
           required
         />
       </div>
@@ -34,13 +34,13 @@
           v-model="form.choice2"
           type="text"
           class="form-input"
-          placeholder="選択肢2"
+          placeholder="例) チュニジア"
           required
         />
       </div>
       <div class="form-group">
         <label for="due" class="form-label">期限</label>
-        <input id="due" v-model="form.due" type="datetime-local" class="form-input" required />
+        <input id="due" v-model="form.due" type="datetime-local" class="form-input" />
       </div>
       <div>
         <button type="button" class="submit-button" @click="submitForm">作成する</button>
@@ -52,28 +52,18 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
+
+import { createPoll } from "../lib/api";
 const router = useRouter();
 
-const getTomorrow = () => {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-};
 const form = reactive({
   name: "",
   choice1: "",
   choice2: "",
-  due: getTomorrow(),
+  due: null,
 });
 
 const submitForm = async () => {
-  console.log(form);
   if (!form.name || !form.choice1 || !form.choice2) {
     alert("投票名と選択肢1, 2は必須です。");
     return;
@@ -84,19 +74,13 @@ const submitForm = async () => {
   }
 
   try {
-    const res = await fetch("/api/polls", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      router.push("/");
+    const res = await createPoll(form);
+    if (res) {
+      console.log(res);
+      router.push(`/polls/${res.id}`);
       form.name = "";
       form.choice1 = "";
       form.choice2 = "";
-      form.due = "";
     } else {
       throw new Error("投票の作成に失敗しました。");
     }
