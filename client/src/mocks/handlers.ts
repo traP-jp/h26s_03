@@ -40,17 +40,76 @@ const createVoteRequestSchema: v.GenericSchema<CreateVoteRequest> = v.object({
 const initialPolls: Poll[] = [
   {
     id: 1,
-    name: "決勝で勝つのはどっち？",
-    choice1: "チームA",
-    choice2: "チームB",
+    name: "W杯 日本 vs チュニジア",
+    choice1: "日本勝ち",
+    choice2: "チュニジア勝ち",
+    result: 1,
+    due: "2026-06-20T00:00:00.000Z",
+    created_by: "cp20",
+    created_at: "2026-06-27T00:00:00.000Z",
+  },
+  {
+    id: 2,
+    name: "W杯 日本 vs ブラジル",
+    choice1: "日本勝ち",
+    choice2: "ブラジル勝ち",
     result: null,
-    due: null,
-    created_by: "developer",
+    due: "2026-06-30T00:00:00.000Z",
+    created_by: "renkon",
     created_at: "2026-06-27T00:00:00.000Z",
   },
 ];
 
-const initialVotes: MockVote[] = [];
+const initialVotes: MockVote[] = [
+  {
+    id: 1,
+    poll_id: 1,
+    username: "cp20",
+    choice: 1,
+    bet: 100,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+  {
+    id: 2,
+    poll_id: 1,
+    username: "renkon",
+    choice: 2,
+    bet: 200,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+  {
+    id: 3,
+    poll_id: 1,
+    username: "nature36",
+    choice: 1,
+    bet: 300,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+  {
+    id: 4,
+    poll_id: 1,
+    username: "Ayuto1123",
+    choice: 2,
+    bet: 400,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+  {
+    id: 5,
+    poll_id: 1,
+    username: "msk",
+    choice: 1,
+    bet: 500,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+  {
+    id: 6,
+    poll_id: 1,
+    username: "azukimaru",
+    choice: 2,
+    bet: 600,
+    created_at: "2026-06-19T00:00:00.000Z",
+  },
+];
 
 const createInitialPolls = (): Poll[] => {
   return initialPolls.map((poll) => ({ ...poll }));
