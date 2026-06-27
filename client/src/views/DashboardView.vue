@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
+
 import type { components } from "../gen/api-types";
 import { getPolls } from "../lib/api";
 
@@ -35,17 +36,23 @@ onMounted(() => {
     <div class="toppage">
       <h1>勝敗ギャンブル（仮）</h1>
       <h2>現在行われている投票</h2>
-      <RouterLink v-for="poll in polls" :key="poll.id" class="poll-button" @click="goToPoll(poll.id)">
+      <RouterLink
+        v-for="poll in polls"
+        :key="poll.id"
+        class="poll-button"
+        @click="goToPoll(poll.id)"
+        :to="`/polls/${poll.id}`"
+      >
         <div class="poll-name">
           {{ poll.name }}
         </div>
       </RouterLink>
 
-      <RouterLink class="more-button" @click="goToCreatePoll">
+      <RouterLink class="more-button" @click="goToCreatePoll" :to="'/polls'">
         もっと見る >
       </RouterLink>
 
-      <RouterLink class="polladd-button" @click="goToCreatePoll">
+      <RouterLink class="polladd-button" @click="goToCreatePoll" :to="'/create'">
         + 新しい投票を作成
       </RouterLink>
     </div>
