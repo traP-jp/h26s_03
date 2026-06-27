@@ -56,18 +56,6 @@ func New(mode Mode) echo.MiddlewareFunc {
 	}
 }
 
-func UserFromContext(c echo.Context) (string, bool) {
-	v := c.Get(ContextUserKey)
-	if v == nil {
-		return "", false
-	}
-	s, ok := v.(string)
-	if !ok || s == "" {
-		return "", false
-	}
-	return s, true
-}
-
 func UserFromRequestContext(ctx context.Context) (string, bool) {
 	v := ctx.Value(contextUserKey{})
 	if v == nil {
