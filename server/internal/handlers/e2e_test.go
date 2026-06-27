@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +20,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/handlers"
+	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
@@ -34,6 +37,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 		{
 			name: "initialize succeeds",
 			run:  scenarioInitializeSucceeds,
+		},
+		{
+			name: "create poll succeeds",
+			run:  scenarioCreatePollSucceeds,
 		},
 	}
 
@@ -55,8 +62,14 @@ func startTestServer(t *testing.T) string {
 	applyMigrations(t, db)
 
 	e := echo.New()
+	e.Use(authx.Soft())
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
+	apiServer, err := openapi.NewServer(h)
+	if err != nil {
+		t.Fatalf("create openapi server: %v", err)
+	}
+	e.Any("/api/*", echo.WrapHandler(apiServer))
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -68,6 +81,33 @@ func scenarioInitializeSucceeds(t *testing.T, baseURL string) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+}
+
+func scenarioCreatePollSucceeds(t *testing.T, baseURL string) {
+	t.Helper()
+
+	body := `{"name":"昼食","choice1":"うどん","choice2":"カレー","due":null}`
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/polls", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", "alice")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request POST /api/polls: %v", err)
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, http.StatusCreated, string(raw))
+	}
+
+	if !strings.Contains(string(raw), `"created_by":"alice"`) {
+		t.Fatalf("unexpected body: %s", string(raw))
+	}
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
