@@ -116,7 +116,7 @@ h2 {
   width: 420px;
   height: 50px;
   padding: 10px;
-  margin-top: 60px;
+  margin-top: 100px;
   background: #193cb815;
   color: #ffffff;
   text-decoration: none;
