@@ -1,12 +1,10 @@
-const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:8080";
-
 import createClient from "openapi-fetch";
 
-import type { paths } from "../gen/api-types";
+import type { paths, components } from "../gen/api-types";
 
-const client = createClient<paths>({
-  baseUrl: apiBase,
-});
+type Poll = components['schemas']['Poll']
+
+const client = createClient<paths>();
 
 const raiseApiError = (error: unknown): never => {
   if (error instanceof Error) {
@@ -21,3 +19,11 @@ export const initializeData = async (): Promise<void> => {
     raiseApiError(error);
   }
 };
+
+export const getPolls = async (): Promise<Poll[]> => {
+  const {data, error} = await client.GET('/api/polls');
+  if (error) {
+    raiseApiError(error)
+  }
+  return data.data
+}
