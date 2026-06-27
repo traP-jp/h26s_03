@@ -13,6 +13,11 @@ const router = createRouter({
       name: "createPoll",
       component: () => import("./views/CreatePollView.vue"),
     },
+    {
+      path: "/polls/:id/input",
+      name: "resultInput",
+      component: () => import("./views/ResultInputView.vue"),
+    },
   ],
 });
 
