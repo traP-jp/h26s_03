@@ -52,6 +52,18 @@ export const getPoll = async (id: number): Promise<Poll> => {
   }
   return data;
 };
+
+export const getMe = async () => {
+  const { data, error } = await client.GET("/api/me");
+  if (error) {
+    raiseApiError(error);
+  }
+  if (data === undefined) {
+    raiseApiError(new Error(`Me not found`));
+  }
+  return data;
+};
+
 export const updatePoll = async (id: number, result: number): Promise<Poll> => {
   const { data, error } = await client.PATCH("/api/polls/{id}", {
     params: {
