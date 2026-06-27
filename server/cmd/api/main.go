@@ -38,6 +38,8 @@ func main() {
 	e.POST("/api/initialize", h.InitializeEcho)
 	e.GET("/api/polls", h.GetPollsEcho)
 
+	e.GET("/api/polls/:id", h.GetPollsID)
+
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {
 		indexPath := filepath.Join(assetsDir, "index.html")
