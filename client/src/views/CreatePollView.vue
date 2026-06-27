@@ -58,10 +58,10 @@ const getTomorrow = () => {
   const date = new Date();
   date.setDate(date.getDate() + 1);
   const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
 
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 };
@@ -145,14 +145,14 @@ const submitForm = async () => {
 }
 .form-input {
   padding: 10px;
-  border: 2px solid #90A1B9;
+  border: 2px solid #90a1b9;
   border-radius: 4px;
   width: 100%;
-  background-color: #1D293D;
+  background-color: #1d293d;
   color: #ffffff;
 }
 .form-input::placeholder {
-  color: #45556C;
+  color: #45556c;
 }
 
 .submit-button {

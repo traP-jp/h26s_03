@@ -12,7 +12,7 @@ const router = createRouter({
       path: "/polls/create",
       name: "createPoll",
       component: () => import("./views/CreatePollView.vue"),
-    }
+    },
   ],
 });
 
