@@ -13,69 +13,390 @@ paths:
       responses:
         '204':
           description: 初期化が完了した
-  /api/tasks:
+  /api/polls:
     get:
-      operationId: getTasks
-      summary: タスク一覧を取得する
-      description: 登録済みタスクの一覧を返す
+      operationId: getPolls
+      summary: 投票一覧を取得する
+      description: 誰でも自由に投票一覧を取得できる
       responses:
         '200':
-          description: タスク一覧を返した
+          description: 投票一覧を返した
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TasksResponse'
+                $ref: '#/components/schemas/PollsResponse'
     post:
-      operationId: createTask
-      summary: タスクを作成する
-      description: 新しいタスクを登録する
+      operationId: createPoll
+      summary: 投票を作成する
+      description: 誰でも自由に投票を作成できる
       requestBody:
         required: true
-        description: 作成するタスクの内容
+        description: 作成する投票の内容
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTaskRequest'
+              $ref: '#/components/schemas/CreatePollRequest'
       responses:
         '201':
-          description: タスクの作成が完了した
+          description: 投票の作成が完了した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+  /api/polls/{id}:
+    get:
+      operationId: getPoll
+      summary: 投票を取得する
+      description: 誰でも自由に投票を取得できる
+      parameters:
+        - $ref: '#/components/parameters/PollId'
+      responses:
+        '200':
+          description: 投票を返した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+        '404':
+          description: 投票が見つからない
+    patch:
+      operationId: updatePoll
+      summary: 投票を編集する
+      description: 投票の作成者のみ編集できる
+      parameters:
+        - $ref: '#/components/parameters/PollId'
+      requestBody:
+        required: true
+        description: 更新する投票の内容
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePollRequest'
+      responses:
+        '200':
+          description: 投票の更新が完了した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+        '403':
+          description: 投票の作成者ではない
+        '404':
+          description: 投票が見つからない
+    delete:
+      operationId: deletePoll
+      summary: 投票を削除する
+      description: 投票の作成者のみ削除できる
+      parameters:
+        - $ref: '#/components/parameters/PollId'
+      responses:
+        '204':
+          description: 投票の削除が完了した
+        '403':
+          description: 投票の作成者ではない
+        '404':
+          description: 投票が見つからない
+  /api/polls/{id}/votes:
+    get:
+      operationId: getPollVotes
+      summary: 賭け一覧を取得する
+      description: 誰でも投票への賭け一覧を取得できる
+      parameters:
+        - $ref: '#/components/parameters/PollId'
+      responses:
+        '200':
+          description: 賭け一覧を返した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VotesResponse'
+        '404':
+          description: 投票が見つからない
+    post:
+      operationId: createVote
+      summary: 投票に賭ける
+      description: 誰でもできるが、同じ投票に複数回は賭けられない
+      parameters:
+        - $ref: '#/components/parameters/PollId'
+      requestBody:
+        required: true
+        description: 作成する賭けの内容
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVoteRequest'
+      responses:
+        '201':
+          description: 賭けの作成が完了した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vote'
+        '404':
+          description: 投票が見つからない
+        '409':
+          description: 同じ投票に既に賭けている
+  /api/polls/{poll_id}/votes/{vote_id}:
+    delete:
+      operationId: deleteVote
+      summary: 賭けを取り消す
+      description: 賭けをした人だけが取り消せる
+      parameters:
+        - $ref: '#/components/parameters/PollIdBySnakeCase'
+        - $ref: '#/components/parameters/VoteId'
+      responses:
+        '204':
+          description: 賭けの取り消しが完了した
+        '403':
+          description: 賭けをしたユーザーではない
+        '404':
+          description: 投票または賭けが見つからない
+  /api/me:
+    get:
+      operationId: getMe
+      summary: 自分の情報を取得する
+      description: 誰でも自分の情報を取得できる
+      responses:
+        '200':
+          description: 自分の情報を返した
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
 components:
+  parameters:
+    PollId:
+      name: id
+      in: path
+      required: true
+      description: 投票ID
+      schema:
+        type: integer
+        format: int64
+    PollIdBySnakeCase:
+      name: poll_id
+      in: path
+      required: true
+      description: 投票ID
+      schema:
+        type: integer
+        format: int64
+    VoteId:
+      name: vote_id
+      in: path
+      required: true
+      description: 賭けID
+      schema:
+        type: integer
+        format: int64
   schemas:
-    Task:
+    Poll:
       type: object
-      description: タスク
+      description: 投票
       required:
         - id
-        - title
-        - status
+        - name
+        - choice1
+        - choice2
+        - result
+        - due
+        - created_by
+        - created_at
       properties:
         id:
           type: integer
           format: int64
-          description: タスクID
-        title:
+          description: 投票ID
+        name:
           type: string
-          description: タスク名
-        status:
+          description: 投票名
+        choice1:
           type: string
-          description: タスク状態
-    TasksResponse:
+          description: 選択肢1
+        choice2:
+          type: string
+          description: 選択肢2
+        result:
+          type: integer
+          nullable: true
+          description: 結果
+        due:
+          type: string
+          format: date-time
+          nullable: true
+          description: 期限
+        created_by:
+          type: string
+          description: 作成ユーザー名
+        created_at:
+          type: string
+          format: date-time
+          description: 作成日時
+    PollsResponse:
       type: object
-      description: タスク一覧レスポンス
+      description: 投票一覧レスポンス
       required:
         - data
       properties:
         data:
           type: array
-          description: タスク一覧
+          description: 投票一覧
           items:
-            $ref: '#/components/schemas/Task'
-    CreateTaskRequest:
+            $ref: '#/components/schemas/Poll'
+    CreatePollRequest:
       type: object
-      description: タスク作成リクエスト
+      description: 投票作成リクエスト
       required:
-        - title
+        - name
+        - choice1
+        - choice2
       properties:
-        title:
+        name:
           type: string
-          description: タスク名
+          description: 投票名
+        choice1:
+          type: string
+          description: 選択肢1
+        choice2:
+          type: string
+          description: 選択肢2
+        due:
+          type: string
+          format: date-time
+          nullable: true
+          description: 期限
+    UpdatePollRequest:
+      type: object
+      description: 投票更新リクエスト
+      properties:
+        name:
+          type: string
+          description: 投票名
+        choice1:
+          type: string
+          description: 選択肢1
+        choice2:
+          type: string
+          description: 選択肢2
+        result:
+          type: integer
+          nullable: true
+          description: 結果
+        due:
+          type: string
+          format: date-time
+          nullable: true
+          description: 期限
+    Vote:
+      type: object
+      description: 賭け
+      required:
+        - id
+        - username
+        - choice
+        - bet
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 賭けID
+        username:
+          type: string
+          description: ユーザー名
+        choice:
+          type: integer
+          description: 選んだ選択肢
+        bet:
+          type: integer
+          description: いくら賭けたか
+        created_at:
+          type: string
+          format: date-time
+          description: 作成日時
+    VotesResponse:
+      type: object
+      description: 賭け一覧レスポンス
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          description: 賭け一覧
+          items:
+            $ref: '#/components/schemas/Vote'
+    CreateVoteRequest:
+      type: object
+      description: 賭け作成リクエスト
+      required:
+        - choice
+        - bet
+      properties:
+        choice:
+          type: integer
+          description: 選んだ選択肢
+        bet:
+          type: integer
+          description: いくら賭けるか
+    Me:
+      type: object
+      description: 自分の情報
+      required:
+        - username
+        - balance
+      properties:
+        username:
+          type: string
+          description: ユーザー名
+        balance:
+          type: integer
+          description: 所持金
+    ReactionWebSocketMessage:
+      type: object
+      description: リアクション通知
+      required:
+        - type
+        - poll_id
+        - username
+        - reaction
+      properties:
+        type:
+          type: string
+          enum:
+            - reaction
+        poll_id:
+          type: string
+          description: 投票ID
+        username:
+          type: string
+          description: ユーザー名
+        reaction:
+          type: string
+          description: リアクション
+    VoteWebSocketMessage:
+      type: object
+      description: 投票通知
+      required:
+        - type
+        - poll_id
+        - username
+      properties:
+        type:
+          type: string
+          enum:
+            - vote
+        poll_id:
+          type: string
+          description: 投票ID
+        username:
+          type: string
+          description: ユーザー名
+    WebSocketMessage:
+      oneOf:
+        - $ref: '#/components/schemas/ReactionWebSocketMessage'
+        - $ref: '#/components/schemas/VoteWebSocketMessage'
+x-websocket-events:
+  description: WebSocket で送受信されるイベント
+  messages:
+    - $ref: '#/components/schemas/ReactionWebSocketMessage'
+    - $ref: '#/components/schemas/VoteWebSocketMessage'

@@ -13,21 +13,75 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
-// CreateTask implements createTask operation.
+// CreatePoll implements createPoll operation.
 //
-// 新しいタスクを登録する.
+// 誰でも自由に投票を作成できる.
 //
-// POST /api/tasks
-func (UnimplementedHandler) CreateTask(ctx context.Context, req *CreateTaskRequest) error {
-	return ht.ErrNotImplemented
+// POST /api/polls
+func (UnimplementedHandler) CreatePoll(ctx context.Context, req *CreatePollRequest) (r *Poll, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
-// GetTasks implements getTasks operation.
+// CreateVote implements createVote operation.
 //
-// 登録済みタスクの一覧を返す.
+// 誰でもできるが、同じ投票に複数回は賭けられない.
 //
-// GET /api/tasks
-func (UnimplementedHandler) GetTasks(ctx context.Context) (r *TasksResponse, _ error) {
+// POST /api/polls/{id}/votes
+func (UnimplementedHandler) CreateVote(ctx context.Context, req *CreateVoteRequest, params CreateVoteParams) (r CreateVoteRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DeletePoll implements deletePoll operation.
+//
+// 投票の作成者のみ削除できる.
+//
+// DELETE /api/polls/{id}
+func (UnimplementedHandler) DeletePoll(ctx context.Context, params DeletePollParams) (r DeletePollRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DeleteVote implements deleteVote operation.
+//
+// 賭けをした人だけが取り消せる.
+//
+// DELETE /api/polls/{poll_id}/votes/{vote_id}
+func (UnimplementedHandler) DeleteVote(ctx context.Context, params DeleteVoteParams) (r DeleteVoteRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetMe implements getMe operation.
+//
+// 誰でも自分の情報を取得できる.
+//
+// GET /api/me
+func (UnimplementedHandler) GetMe(ctx context.Context) (r *Me, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPoll implements getPoll operation.
+//
+// 誰でも自由に投票を取得できる.
+//
+// GET /api/polls/{id}
+func (UnimplementedHandler) GetPoll(ctx context.Context, params GetPollParams) (r GetPollRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPollVotes implements getPollVotes operation.
+//
+// 誰でも投票への賭け一覧を取得できる.
+//
+// GET /api/polls/{id}/votes
+func (UnimplementedHandler) GetPollVotes(ctx context.Context, params GetPollVotesParams) (r GetPollVotesRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPolls implements getPolls operation.
+//
+// 誰でも自由に投票一覧を取得できる.
+//
+// GET /api/polls
+func (UnimplementedHandler) GetPolls(ctx context.Context) (r *PollsResponse, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -38,4 +92,13 @@ func (UnimplementedHandler) GetTasks(ctx context.Context) (r *TasksResponse, _ e
 // POST /api/initialize
 func (UnimplementedHandler) Initialize(ctx context.Context) error {
 	return ht.ErrNotImplemented
+}
+
+// UpdatePoll implements updatePoll operation.
+//
+// 投票の作成者のみ編集できる.
+//
+// PATCH /api/polls/{id}
+func (UnimplementedHandler) UpdatePoll(ctx context.Context, req *UpdatePollRequest, params UpdatePollParams) (r UpdatePollRes, _ error) {
+	return r, ht.ErrNotImplemented
 }

@@ -1,9 +1,7 @@
 package handlers_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -35,16 +32,8 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 		run  func(*testing.T, string)
 	}{
 		{
-			name: "initialize seeds expected records",
-			run:  scenarioInitializeSeedsExpectedRecords,
-		},
-		{
-			name: "create task adds new task",
-			run:  scenarioCreateTaskAddsTask,
-		},
-		{
-			name: "create task validates required fields",
-			run:  scenarioCreateTaskValidatesRequiredFields,
+			name: "initialize succeeds",
+			run:  scenarioInitializeSucceeds,
 		},
 	}
 
@@ -68,8 +57,6 @@ func startTestServer(t *testing.T) string {
 	e := echo.New()
 	h := handlers.New(db)
 	e.POST("/api/initialize", h.InitializeEcho)
-	e.GET("/api/tasks", h.GetTasksEcho)
-	e.POST("/api/tasks", h.CreateTaskEcho)
 
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
@@ -77,56 +64,10 @@ func startTestServer(t *testing.T) string {
 	return srv.URL
 }
 
-func scenarioInitializeSeedsExpectedRecords(t *testing.T, baseURL string) {
+func scenarioInitializeSucceeds(t *testing.T, baseURL string) {
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-
-	tasks := fetchTasks(t, baseURL+"/api/tasks")
-	if got, want := len(tasks.Data), 3; got != want {
-		t.Fatalf("unexpected tasks length: got=%d want=%d", got, want)
-	}
-}
-
-func scenarioCreateTaskAddsTask(t *testing.T, baseURL string) {
-	t.Helper()
-
-	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-
-	createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{
-		"title": "Testcontainers task",
-	}, http.StatusCreated)
-
-	tasks := fetchTasks(t, baseURL+"/api/tasks")
-	if got, want := len(tasks.Data), 4; got != want {
-		t.Fatalf("unexpected tasks length after create: got=%d want=%d", got, want)
-	}
-
-	var found bool
-	for _, task := range tasks.Data {
-		if task.Title == "Testcontainers task" {
-			found = true
-			if task.Status != "todo" {
-				t.Fatalf("unexpected created task status: got=%s", task.Status)
-			}
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("created task not found")
-	}
-}
-
-func scenarioCreateTaskValidatesRequiredFields(t *testing.T, baseURL string) {
-	t.Helper()
-
-	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-
-	body := createTaskAndExpectStatus(t, baseURL+"/api/tasks", map[string]any{}, http.StatusBadRequest)
-
-	if !strings.Contains(body, "title is required") {
-		t.Fatalf("unexpected validation message: %s", body)
-	}
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
@@ -234,61 +175,4 @@ func mustRequestNoBody(t *testing.T, method, url string, expectedStatus int) {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("unexpected status: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
 	}
-}
-
-type tasksResponse struct {
-	Data []struct {
-		ID     int64  `json:"id"`
-		Title  string `json:"title"`
-		Status string `json:"status"`
-	} `json:"data"`
-}
-
-func createTaskAndExpectStatus(t *testing.T, url string, payload map[string]any, expectedStatus int) string {
-	t.Helper()
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		t.Fatalf("marshal payload: %v", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post /api/tasks: %v", err)
-	}
-	defer resp.Body.Close()
-
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != expectedStatus {
-		t.Fatalf("unexpected status from create task: got=%d want=%d body=%s", resp.StatusCode, expectedStatus, string(raw))
-	}
-
-	return string(raw)
-}
-
-func fetchTasks(t *testing.T, url string) tasksResponse {
-	t.Helper()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		t.Fatalf("get tasks: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("unexpected tasks status: %d body=%s", resp.StatusCode, string(raw))
-	}
-
-	var out tasksResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		t.Fatalf("decode tasks: %v", err)
-	}
-	return out
 }
