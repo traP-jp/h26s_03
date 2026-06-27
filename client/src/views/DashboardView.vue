@@ -37,13 +37,9 @@ onMounted(() => {
         </div>
       </RouterLink>
 
-      <RouterLink class="more-button":to="'/polls'">
-        もっと見る >
-      </RouterLink>
+      <RouterLink class="more-button" :to="'/polls'"> もっと見る > </RouterLink>
 
-      <RouterLink class="polladd-button":to="'/create'">
-        + 新しい投票を作成
-      </RouterLink>
+      <RouterLink class="polladd-button" :to="'/create'"> + 新しい投票を作成 </RouterLink>
     </div>
   </div>
 </template>
