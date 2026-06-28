@@ -68,6 +68,17 @@ h1 {
   color: #ffffff;
 }
 
+@media screen and (max-width: 1024px) {
+  .h1 {
+    font-size: 40px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .h1 {
+    font-size: 25px;
+  }
+}
 h2 {
   font-size: 20px;
   margin-bottom: 20px;
@@ -75,8 +86,8 @@ h2 {
 }
 
 .poll-button {
-  width: 420px;
-  height: 50px;
+  max-width: 420px;
+  min-height: 50px;
   padding: 10px;
   margin-bottom: 10px;
   background: transparent;
@@ -93,8 +104,8 @@ h2 {
 }
 
 .polladd-button {
-  width: 420px;
-  height: 50px;
+  max-width: 420px;
+  min-height: 50px;
   padding: 10px;
   margin-top: 100px;
   background: #193cb815;
