@@ -38,6 +38,7 @@ FROM alpine:3.22 AS app
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=server-builder /out/server /app/server
+COPY server/migrations /app/migrations
 COPY --from=client-builder /workspace/client/dist /app/assets
 ENV API_ADDR=:8080
 ENV ASSETS_DIR=/app/assets

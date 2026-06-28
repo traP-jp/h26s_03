@@ -77,7 +77,9 @@ mise run server-test
 
 ## DB を変更する
 
-テーブルを変えたいときは `migrations` に SQL を追加・編集します。ローカル DB に反映するときは、リポジトリ直下で次を実行します。
+テーブルを変えたいときは `migrations` に SQL を追加・編集します。未適用の migration はサーバー起動時に自動で反映されます。
+
+手動で最新まで反映したいときは、リポジトリ直下で次を実行します。
 
 ```bash
 mise run migrate-up
@@ -108,5 +110,6 @@ mise run server-test
 
 - `API_ADDR` (default: `:8080`)
 - `DB_DSN` (default: `app:app@tcp(localhost:3306)/app?parseTime=true&multiStatements=true`)
+- `MIGRATIONS_DIR` (default: `migrations`)
 - `AUTH_MODE` (`SOFT` or `HARD`, default: `SOFT`)
 - `ASSETS_DIR` (指定時は静的配信)
