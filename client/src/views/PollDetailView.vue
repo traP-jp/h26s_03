@@ -1,14 +1,19 @@
 <template>
   <div class="page-container">
     <div class="header">
-      <RouterLink to="/" class="back-link">＜ 戻る</RouterLink>
-      <RouterLink
-        :to="`/polls/${pollId}/input`"
-        class="edit-link"
-        v-if="me?.username && me?.username === poll?.created_by"
-      >
-        <EditIcon />
-      </RouterLink>
+      <RouterLink to="/" class="back-link"> < 戻る</RouterLink>
+      <div class="header-icons">
+        <a :href="shareUrl" target="_blank" rel="noopener noreferrer" class="share-link">
+          <ShareIcon />
+        </a>
+        <RouterLink
+          :to="`/polls/${pollId}/input`"
+          class="edit-link"
+          v-if="me && me.username === poll?.created_by"
+        >
+          <EditIcon />
+        </RouterLink>
+      </div>
       <h1>{{ poll?.name }}</h1>
     </div>
     <div v-if="poll" class="main-container">
@@ -109,6 +114,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import EditIcon from "../components/EditIcon.vue";
+import ShareIcon from "../components/ShareIcon.vue";
 import type { components } from "../gen/api-types";
 import { createVote, deleteVote, getMe, getPoll, getVotes } from "../lib/api";
 
@@ -310,6 +316,32 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disconnectWebSocket();
 });
+//共有機能
+const shareUrl = computed(() => {
+  if (me.value === null || poll.value === null) {
+    return "";
+  }
+
+  let text = "";
+
+  if (hasResult.value) {
+    text = `投票「${poll.value.name}」の結果が出ました！\n` + `勝者: ${winningChoiceName.value}\n`;
+
+    if (isCorrectVote.value === true) {
+      text += `${me.value.username}は的中しました！\n`;
+    } else if (isCorrectVote.value === false) {
+      text += `${me.value.username}は外れました…\n`;
+    } else {
+      text += "投票は締め切られました\n";
+    }
+
+    text += window.location.href;
+  } else {
+    text = `投票「${poll.value.name}」に参加してください！\n` + `${window.location.href}`;
+  }
+
+  return `https://q.trap.jp/share-target?text=${encodeURIComponent(text)}`;
+});
 </script>
 
 <style scoped>
@@ -319,22 +351,31 @@ onBeforeUnmount(() => {
   color: #ffffff;
   min-height: 100vh;
 }
+
 .header {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
   margin-bottom: 20px;
 }
+
+.header-icons {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .back-link {
   align-self: flex-start;
   margin: 10px;
   text-decoration: none;
   color: #ffffff;
 }
+
 .edit-link {
-  align-self: flex-end;
   margin: 10px;
   text-decoration: none;
   color: #ffffff;
@@ -364,10 +405,11 @@ onBeforeUnmount(() => {
   align-items: center;
   width: 100%;
 }
+
 .choice-button {
   width: 100%;
   max-width: 280px;
-  min-height: 72px;
+  min-height: 50px;
   font-size: 20px;
   font-weight: 700;
   margin: 10px;
@@ -377,18 +419,22 @@ onBeforeUnmount(() => {
   background: #0f172b;
   color: #ffffff;
 }
+
 .choice-button:hover:not(:disabled) {
   background-color: #374151;
 }
+
 .choice-button.selected {
   background-color: #101e40;
   color: #8ec5ff;
   border: 2px solid #51a2ff;
 }
+
 .choice-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
 .choice-button.winner {
   background: #dbeafe;
   color: #1d4ed8;
@@ -451,15 +497,18 @@ onBeforeUnmount(() => {
   margin: 12px 0 0;
   color: #6b7280;
 }
+
 .choice-button.selected:disabled {
   opacity: 0.8;
 }
+
 .icon-container {
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 10px;
 }
+
 .avatar-container {
   display: flex;
   align-items: center;
@@ -490,6 +539,7 @@ onBeforeUnmount(() => {
 .expand-button:hover {
   background: #475569;
 }
+
 .avatar {
   width: 40px;
   height: 40px;
@@ -538,8 +588,9 @@ onBeforeUnmount(() => {
 .avatar-pop-move {
   transition: transform 0.25s ease;
 }
+
 .meta {
-  margin-top: 32px;
+  margin-top: 0px;
   font-size: 13px;
   color: #6b7280;
   display: flex;
@@ -547,6 +598,7 @@ onBeforeUnmount(() => {
   gap: 16px;
   flex-wrap: wrap;
 }
+
 .closed-message {
   margin-top: 20px;
   color: #6b7280;
