@@ -13,6 +13,7 @@ import (
 )
 
 const anonymousUser = "anonymous"
+const initialUserBalance = 1000
 
 func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest) (*openapi.Poll, error) {
 	createdBy, ok := authx.UserFromRequestContext(ctx)
@@ -93,9 +94,13 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 	var balance int
 	if err := tx.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ? FOR UPDATE`, username).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &openapi.CreateVoteConflict{}, nil
+			if _, err := tx.ExecContext(ctx, `INSERT INTO users (username, balance) VALUES (?, ?)`, username, initialUserBalance); err != nil {
+				return nil, fmt.Errorf("create user: %w", err)
+			}
+			balance = initialUserBalance
+		} else {
+			return nil, fmt.Errorf("get user balance: %w", err)
 		}
-		return nil, fmt.Errorf("get user balance: %w", err)
 	}
 
 	if balance < req.Bet {

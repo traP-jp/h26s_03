@@ -64,6 +64,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioCreateVoteSucceeds,
 		},
 		{
+			name: "create vote creates missing user",
+			run:  scenarioCreateVoteCreatesMissingUser,
+		},
+		{
 			name: "create vote returns not found",
 			run:  scenarioCreateVoteReturnsNotFound,
 		},
@@ -427,6 +431,26 @@ func scenarioCreateVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	}
 	if got := userBalance(t, db, "alice"); got != 0 {
 		t.Fatalf("unexpected balance: got=%d want=0", got)
+	}
+}
+
+func scenarioCreateVoteCreatesMissingUser(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+
+	resp := mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "new-user", `{"choice":1,"bet":100}`, http.StatusCreated)
+
+	var out voteResponse
+	if err := json.Unmarshal(resp, &out); err != nil {
+		t.Fatalf("decode created vote: %v", err)
+	}
+	if out.Username != "new-user" {
+		t.Fatalf("unexpected username: got=%s want=new-user", out.Username)
+	}
+	if got := userBalance(t, db, "new-user"); got != 900 {
+		t.Fatalf("unexpected balance: got=%d want=900", got)
 	}
 }
 
