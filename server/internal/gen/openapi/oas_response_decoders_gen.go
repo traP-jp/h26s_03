@@ -91,6 +91,9 @@ func decodeCreateVoteResponse(resp *http.Response) (res CreateVoteRes, _ error) 
 		default:
 			return res, validate.InvalidContentType(ct)
 		}
+	case 400:
+		// Code 400.
+		return &CreateVoteBadRequest{}, nil
 	case 404:
 		// Code 404.
 		return &CreateVoteNotFound{}, nil

@@ -9,9 +9,9 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /workspace
 
 FROM node-base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY client/pnpm-lock.yaml client/pnpm-lock.yaml
 COPY client/package.json client/package.json
-RUN pnpm install --frozen-lockfile
+RUN pnpm --dir client install --frozen-lockfile
 
 FROM deps AS client-builder
 COPY client client
@@ -38,6 +38,7 @@ FROM alpine:3.22 AS app
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=server-builder /out/server /app/server
+COPY server/migrations /app/migrations
 COPY --from=client-builder /workspace/client/dist /app/assets
 ENV API_ADDR=:8080
 ENV ASSETS_DIR=/app/assets

@@ -135,7 +135,9 @@ paths:
         '404':
           description: 投票が見つからない
         '409':
-          description: 同じ投票に既に賭けている
+          description: 同じ投票に既に賭けている・所持金が足りない
+        '400':
+          description: Choice が不正
   /api/polls/{poll_id}/votes/{vote_id}:
     delete:
       operationId: deleteVote
@@ -309,6 +311,7 @@ components:
           description: 選んだ選択肢
         bet:
           type: integer
+          default: 0
           description: いくら賭けたか
         created_at:
           type: string
@@ -383,10 +386,45 @@ components:
         username:
           type: string
           description: ユーザー名
+    PollStatus:
+      type: string
+      description: 投票ステータス
+      enum:
+        - open
+        - closed
+        - result_announced
+    PollStatusWebSocketMessage:
+      type: object
+      description: サーバーからクライアントへ送信される投票ステータス通知
+      required:
+        - type
+        - status
+        - result
+        - notified_at
+      properties:
+        type:
+          type: string
+          enum:
+            - poll_status
+        poll_id:
+          type: integer
+          format: int64
+          description: 投票ID
+        status:
+          $ref: '#/components/schemas/PollStatus'
+        result:
+          type: integer
+          nullable: true
+          description: 結果
+        notified_at:
+          type: string
+          format: date-time
+          description: 通知日時
     WebSocketMessage:
       oneOf:
         - $ref: '#/components/schemas/ReactionWebSocketMessage'
         - $ref: '#/components/schemas/VoteWebSocketMessage'
+        - $ref: '#/components/schemas/PollStatusWebSocketMessage'
 x-websocket-events:
   endpoint:
     path: /api/ws
@@ -400,3 +438,4 @@ x-websocket-events:
   messages:
     - $ref: '#/components/schemas/ReactionWebSocketMessage'
     - $ref: '#/components/schemas/VoteWebSocketMessage'
+    - $ref: '#/components/schemas/PollStatusWebSocketMessage'

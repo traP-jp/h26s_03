@@ -3,14 +3,17 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/traP-jp/h26s_03/server/internal/gen/openapi"
 	"github.com/traP-jp/h26s_03/server/internal/middleware/authx"
 )
 
 const anonymousUser = "anonymous"
+const initialUserBalance = 1000
 
 func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest) (*openapi.Poll, error) {
 	createdBy, ok := authx.UserFromRequestContext(ctx)
@@ -49,6 +52,99 @@ func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest
 	}
 
 	return poll, nil
+}
+
+func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest, params openapi.CreateVoteParams) (openapi.CreateVoteRes, error) {
+	username, ok := authx.UserFromRequestContext(ctx)
+	if !ok {
+		username = anonymousUser
+	}
+
+	if req.Choice != 1 && req.Choice != 2 {
+		return &openapi.CreateVoteBadRequest{}, nil
+	}
+
+	tx, err := h.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin create vote transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var exists int
+	if err := tx.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM polls WHERE id = ?)`, params.ID).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("check poll exists: %w", err)
+	}
+	if exists == 0 {
+		return &openapi.CreateVoteNotFound{}, nil
+	}
+
+	var alreadyVoted int
+	if err := tx.QueryRowxContext(
+		ctx,
+		`SELECT EXISTS(SELECT 1 FROM votes WHERE poll_id = ? AND username = ?)`,
+		params.ID,
+		username,
+	).Scan(&alreadyVoted); err != nil {
+		return nil, fmt.Errorf("check vote exists: %w", err)
+	}
+	if alreadyVoted != 0 {
+		return &openapi.CreateVoteConflict{}, nil
+	}
+
+	var balance int
+	if err := tx.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ? FOR UPDATE`, username).Scan(&balance); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO users (username, balance) VALUES (?, ?)`, username, initialUserBalance); err != nil {
+				return nil, fmt.Errorf("create user: %w", err)
+			}
+			balance = initialUserBalance
+		} else {
+			return nil, fmt.Errorf("get user balance: %w", err)
+		}
+	}
+
+	if balance < req.Bet {
+		return &openapi.CreateVoteConflict{}, nil
+	}
+
+	createdAt := time.Now().UTC()
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET balance = balance - ? WHERE username = ?`, req.Bet, username); err != nil {
+		return nil, fmt.Errorf("update user balance: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, `
+		INSERT INTO votes (poll_id, username, choice, bet, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, params.ID, username, req.Choice, req.Bet, createdAt)
+	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) {
+			switch mysqlErr.Number {
+			case 1062:
+				return &openapi.CreateVoteConflict{}, nil
+			case 1452:
+				return &openapi.CreateVoteNotFound{}, nil
+			}
+		}
+		return nil, fmt.Errorf("create vote: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("get created vote id: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit create vote transaction: %w", err)
+	}
+
+	return &openapi.Vote{
+		ID:        id,
+		Username:  username,
+		Choice:    req.Choice,
+		Bet:       req.Bet,
+		CreatedAt: createdAt,
+	}, nil
 }
 
 func (h *Handler) DeletePoll(ctx context.Context, params openapi.DeletePollParams) (openapi.DeletePollRes, error) {
@@ -95,6 +191,43 @@ func (h *Handler) DeletePoll(ctx context.Context, params openapi.DeletePollParam
 	}
 
 	return &openapi.DeletePollNoContent{}, nil
+}
+
+func (h *Handler) DeleteVote(ctx context.Context, params openapi.DeleteVoteParams) (openapi.DeleteVoteRes, error) {
+	currentUser, ok := authx.UserFromRequestContext(ctx)
+	if !ok {
+		currentUser = anonymousUser
+	}
+
+	var username string
+	if err := h.db.QueryRowxContext(
+		ctx,
+		`SELECT username FROM votes WHERE poll_id = ? AND id = ?`,
+		params.PollID,
+		params.VoteID,
+	).Scan(&username); err != nil {
+		if err == sql.ErrNoRows {
+			return &openapi.DeleteVoteNotFound{}, nil
+		}
+		return nil, fmt.Errorf("get vote owner: %w", err)
+	}
+	if username != currentUser {
+		return &openapi.DeleteVoteForbidden{}, nil
+	}
+
+	result, err := h.db.ExecContext(ctx, `DELETE FROM votes WHERE poll_id = ? AND id = ?`, params.PollID, params.VoteID)
+	if err != nil {
+		return nil, fmt.Errorf("delete vote: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("get deleted vote count: %w", err)
+	}
+	if affected == 0 {
+		return &openapi.DeleteVoteNotFound{}, nil
+	}
+
+	return &openapi.DeleteVoteNoContent{}, nil
 }
 
 func nilInt() openapi.NilInt {

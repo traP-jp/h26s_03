@@ -61,7 +61,7 @@ mise run dev-down
   - `server/internal/handlers`
 - データベースの定義を変えたい時
   - `server/migrations` に migration SQL を追加・編集する
-  - ローカル DB に反映するときは `mise run migrate-up` を実行する
+  - サーバー起動時に未適用の migration が自動で反映される
   - 1 つ戻したいときは `mise run migrate-down` を実行する
 
 ## API を変更するとき

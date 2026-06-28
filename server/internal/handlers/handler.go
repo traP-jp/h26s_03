@@ -122,23 +122,6 @@ func (h *Handler) GetPollsEcho(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *Handler) GetMe(ctx context.Context) (*openapi.Me, error) {
-	username, ok := authx.UserFromRequestContext(ctx)
-	if !ok {
-		username = anonymousUser
-	}
-
-	var balance int
-	if err := h.db.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
-		if err == sql.ErrNoRows {
-			return &openapi.Me{Username: username, Balance: 0}, nil
-		}
-		return nil, fmt.Errorf("get me: %w", err)
-	}
-
-	return &openapi.Me{Username: username, Balance: balance}, nil
-}
-
 func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest, params openapi.UpdatePollParams) (openapi.UpdatePollRes, error) {
 	current, err := h.getPollByID(ctx, params.ID)
 	if err != nil {
@@ -169,8 +152,10 @@ func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest
 	}
 
 	result := current.Result
+	shouldNotifyPollClosed := false
 	if req.Result.IsSet() {
 		result = sql.NullInt64{Int64: int64(req.Result.Value), Valid: true}
+		shouldNotifyPollClosed = !current.Result.Valid
 	}
 	if req.Result.IsNull() {
 		result = sql.NullInt64{Valid: false}
@@ -199,6 +184,9 @@ WHERE id = ?`
 	}
 
 	poll := toOpenAPIPoll(updated)
+	if shouldNotifyPollClosed {
+		h.broadcastPollClosed(strconv.FormatInt(poll.ID, 10), int(updated.Result.Int64))
+	}
 	return &poll, nil
 }
 
