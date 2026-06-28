@@ -24,7 +24,7 @@ onMounted(() => {
 <template>
   <div class="background">
     <div class="toppage">
-      <h1>勝敗ギャンブル（仮）</h1>
+      <h1>ギャンギャンギャンブル</h1>
       <h2>現在行われている投票</h2>
       <RouterLink
         v-for="poll in polls"
