@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -12,12 +14,23 @@ import (
 )
 
 const (
-	websocketMessageTypeReaction = "reaction"
-	websocketMessageTypeVote     = "vote"
+	websocketMessageTypeReaction   = "reaction"
+	websocketMessageTypeVote       = "vote"
+	websocketMessageTypePollStatus = "poll_status"
+
+	pollStatusClosed = "closed"
 )
 
 type websocketMessageEnvelope struct {
 	Type string `json:"type"`
+}
+
+type pollStatusWebSocketMessage struct {
+	Type       string    `json:"type"`
+	PollID     int64     `json:"poll_id"`
+	Status     string    `json:"status"`
+	Result     *int      `json:"result"`
+	NotifiedAt time.Time `json:"notified_at"`
 }
 
 type websocketHub struct {
@@ -57,6 +70,25 @@ var websocketUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+func (h *Handler) broadcastPollClosed(pollID int64, result *int) {
+	if h.wsHub == nil {
+		return
+	}
+
+	payload, err := json.Marshal(pollStatusWebSocketMessage{
+		Type:       websocketMessageTypePollStatus,
+		PollID:     pollID,
+		Status:     pollStatusClosed,
+		Result:     result,
+		NotifiedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		return
+	}
+
+	h.wsHub.broadcastToPoll(fmt.Sprint(pollID), websocket.TextMessage, payload)
 }
 
 func (h *Handler) WebSocket(c echo.Context) error {

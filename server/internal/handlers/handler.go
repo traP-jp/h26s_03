@@ -152,16 +152,20 @@ func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest
 	}
 
 	result := current.Result
+	shouldNotifyPollClosed := false
 	if req.Result.IsSet() {
 		result = sql.NullInt64{Int64: int64(req.Result.Value), Valid: true}
+		shouldNotifyPollClosed = !current.Result.Valid
 	}
 	if req.Result.IsNull() {
 		result = sql.NullInt64{Valid: false}
 	}
 
 	due := current.Due
+	shouldScheduleDueClose := false
 	if req.Due.IsSet() {
 		due = sql.NullTime{Time: req.Due.Value, Valid: true}
+		shouldScheduleDueClose = true
 	}
 	if req.Due.IsNull() {
 		due = sql.NullTime{Valid: false}
@@ -182,6 +186,13 @@ WHERE id = ?`
 	}
 
 	poll := toOpenAPIPoll(updated)
+	if shouldNotifyPollClosed {
+		closedResult := int(updated.Result.Int64)
+		h.broadcastPollClosed(poll.ID, &closedResult)
+	}
+	if shouldScheduleDueClose && updated.Due.Valid {
+		h.schedulePollDueClose(poll.ID, updated.Due.Time)
+	}
 	return &poll, nil
 }
 
