@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -41,7 +42,6 @@ func main() {
 	e.GET("/api/polls", h.GetPollsEcho)
 	e.PATCH("/api/polls/:id", h.UpdatePollEcho)
 
-
 	apiServer, err := openapi.NewServer(h)
 	if err != nil {
 		log.Fatalf("failed to create openapi server: %v", err)
@@ -51,8 +51,25 @@ func main() {
 	assetsDir := getenv("ASSETS_DIR", "")
 	if assetsDir != "" {
 		indexPath := filepath.Join(assetsDir, "index.html")
-		e.Static("/", assetsDir)
-		e.File("/*", indexPath)
+		e.GET("/*", func(c echo.Context) error {
+			requestPath := strings.TrimPrefix(filepath.Clean("/"+c.Param("*")), "/")
+			filePath := filepath.Join(assetsDir, requestPath)
+
+			relPath, err := filepath.Rel(assetsDir, filePath)
+			if err != nil || relPath == ".." || strings.HasPrefix(relPath, "../") {
+				return echo.NewHTTPError(http.StatusBadRequest, "invalid asset path")
+			}
+
+			info, err := os.Stat(filePath)
+			if err == nil && !info.IsDir() {
+				return c.File(filePath)
+			}
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+
+			return c.File(indexPath)
+		})
 		log.Printf("serving assets from %s", assetsDir)
 	}
 
