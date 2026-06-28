@@ -269,7 +269,7 @@ const connectWebSocket = () => {
   try {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     // const wsUrl = `${protocol}//localhost:8080/api/ws?poll_id=${pollId}`;
-     const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
     wsConnection.value = new WebSocket(wsUrl);
     wsConnection.value.onmessage = (event: MessageEvent) => {
       try {
