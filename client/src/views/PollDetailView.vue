@@ -99,6 +99,20 @@
           </TransitionGroup>
         </div>
       </div>
+      <div class="reaction-buttons">
+        <button
+          v-for="reaction in reactions"
+          @click="sendReaction(reaction)"
+          :key="reaction"
+          class="reaction-button"
+          type="button"
+          :aria-label="`Send ${reaction} reaction`"
+          :title="reaction"
+        >
+          <img :src="reactionIcons[reaction]" :alt="reaction" width="32" height="32" />
+        </button>
+      </div>
+      <div class="reaction-container" ref="reaction-container"></div>
       <div class="meta">
         <p>作成者: {{ poll?.created_by }}</p>
         <p v-if="poll?.due">期限: {{ new Date(poll.due).toLocaleString() }}</p>
@@ -123,13 +137,42 @@
 
 <script setup lang="ts">
 import confetti from "@hiseb/confetti";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from "vue";
 import { useRoute } from "vue-router";
 
+import fire_icon from "../assets/reactions/fire.svg";
+import heart_icon from "../assets/reactions/heart.svg";
+import moneybag_icon from "../assets/reactions/moneybag.svg";
+import open_mouth_icon from "../assets/reactions/open_mouth.svg";
+import star_struck_icon from "../assets/reactions/star_struck.svg";
+import thumbs_up_icon from "../assets/reactions/thumbs_up.svg";
+import zany_face_icon from "../assets/reactions/zany_face.svg";
 import EditIcon from "../components/EditIcon.vue";
 import ShareIcon from "../components/ShareIcon.vue";
 import type { components } from "../gen/api-types";
 import { createVote, deleteVote, getMe, getPoll, getVotes } from "../lib/api";
+
+const reactionContainerRef = useTemplateRef("reaction-container");
+
+const reactions = [
+  "fire",
+  "thumbs_up",
+  "heart",
+  "open_mouth",
+  "zany_face",
+  "star_struck",
+  "moneybag",
+];
+
+const reactionIcons: Record<string, string> = {
+  fire: fire_icon,
+  thumbs_up: thumbs_up_icon,
+  heart: heart_icon,
+  open_mouth: open_mouth_icon,
+  zany_face: zany_face_icon,
+  star_struck: star_struck_icon,
+  moneybag: moneybag_icon,
+};
 
 const route = useRoute();
 const pollId = route.params.id as string;
@@ -228,6 +271,50 @@ const sendVoteWebSocketMessage = () => {
       poll_id: String(pollId),
     }),
   );
+};
+
+const sendReaction = (reaction: string) => {
+  if (!wsConnection.value) return;
+
+  if (wsConnection.value.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket is not open");
+    return;
+  }
+
+  wsConnection.value.send(
+    JSON.stringify({
+      type: "reaction",
+      poll_id: String(pollId),
+      reaction: reaction,
+    }),
+  );
+};
+
+const showReaction = (reaction: string) => {
+  if (!reactionContainerRef.value) return;
+  const reactionIcon = reactionIcons[reaction];
+  if (!reactionIcon) return;
+
+  const reactionElement = document.createElement("img");
+  reactionElement.src = reactionIcon;
+  reactionElement.alt = reaction;
+  reactionElement.className = "reaction-animation";
+  const rotation = Math.random() * 28 - 14;
+  const drift = Math.random() * 56 - 28;
+  reactionElement.style.setProperty("--reaction-x", `${Math.random() * 72 + 14}%`);
+  reactionElement.style.setProperty("--reaction-drift-mid", `${drift * 0.45}px`);
+  reactionElement.style.setProperty("--reaction-drift-end", `${drift}px`);
+  reactionElement.style.setProperty("--reaction-rotate-start", `${rotation * -0.45}deg`);
+  reactionElement.style.setProperty("--reaction-rotate-mid", `${rotation * 0.45}deg`);
+  reactionElement.style.setProperty("--reaction-rotate-end", `${rotation}deg`);
+  reactionElement.style.setProperty("--reaction-delay", `${Math.random() * 0.12}s`);
+  reactionContainerRef.value.appendChild(reactionElement);
+
+  setTimeout(() => {
+    if (reactionContainerRef.value && reactionElement.parentNode === reactionContainerRef.value) {
+      reactionContainerRef.value.removeChild(reactionElement);
+    }
+  }, 2000);
 };
 
 const fetchVoteList = async () => {
@@ -356,6 +443,9 @@ const connectWebSocket = () => {
               showResultAnnouncement();
             }
           }
+        }
+        if (message.type === "reaction") {
+          showReaction(message.reaction);
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -580,6 +670,80 @@ const shareUrl = computed(() => {
   opacity: 0.8;
 }
 
+.reaction-buttons {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: min(100%, 460px);
+  margin: 30px auto 12px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.reaction-button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background-color: rgba(15, 23, 42, 0.72);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.reaction-button:hover {
+  border-color: rgba(142, 197, 255, 0.7);
+  background-color: rgba(51, 65, 85, 0.98);
+}
+
+.reaction-button:active {
+  transform: scale(0.94);
+}
+
+.reaction-button:focus-visible {
+  outline: 3px solid rgba(142, 197, 255, 0.85);
+  outline-offset: 3px;
+}
+
+.reaction-button img {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25));
+  pointer-events: none;
+}
+
+.reaction-container {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 1200;
+  width: min(520px, 92vw);
+  height: min(460px, 58vh);
+  pointer-events: none;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+.reaction-container :deep(.reaction-animation) {
+  position: absolute;
+  left: var(--reaction-x, 50%);
+  bottom: 0;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.28));
+  transform: translateX(-50%);
+  animation: reaction-float 2s var(--reaction-delay, 0s) cubic-bezier(0.18, 0.84, 0.24, 1) forwards;
+  will-change: opacity, transform;
+}
+
 .icon-container {
   display: flex;
   align-items: center;
@@ -698,6 +862,28 @@ const shareUrl = computed(() => {
   .avatar-container {
     max-width: 280px;
   }
+
+  .reaction-buttons {
+    gap: 8px;
+    max-width: 340px;
+    padding: 8px;
+    border-radius: 24px;
+  }
+
+  .reaction-button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .reaction-button img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .reaction-container {
+    bottom: 68px;
+    height: min(420px, 54vh);
+  }
 }
 .result-announcement-overlay {
   position: fixed;
@@ -794,6 +980,30 @@ const shareUrl = computed(() => {
 
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes reaction-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 30px) scale(0.55) rotate(var(--reaction-rotate-start, 0deg));
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.1) rotate(0deg);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--reaction-drift-mid, 0px)), -180px) scale(1)
+      rotate(var(--reaction-rotate-mid, 0deg));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--reaction-drift-end, 0px)), -320px) scale(0.72)
+      rotate(var(--reaction-rotate-end, 0deg));
   }
 }
 </style>
