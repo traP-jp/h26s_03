@@ -72,6 +72,18 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioDeletePollReturnsNotFound,
 		},
 		{
+			name: "delete vote succeeds",
+			run:  scenarioDeleteVoteSucceeds,
+		},
+		{
+			name: "delete vote returns forbidden",
+			run:  scenarioDeleteVoteReturnsForbidden,
+		},
+		{
+			name: "delete vote returns not found",
+			run:  scenarioDeleteVoteReturnsNotFound,
+		},
+		{
 			name: "patch poll updates selected fields",
 			run:  scenarioPatchPollUpdatesSelectedFields,
 		},
@@ -394,6 +406,53 @@ func scenarioDeletePollReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/999", "traq_user", http.StatusNotFound)
+}
+
+func scenarioDeleteVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	seedVotes(t, db)
+
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1/votes/1", "alice", http.StatusNoContent)
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM votes WHERE poll_id = ? AND id = ?`, 1, 1).Scan(&count); err != nil {
+		t.Fatalf("count deleted vote: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("unexpected vote count: got=%d want=0", count)
+	}
+}
+
+func scenarioDeleteVoteReturnsForbidden(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	seedVotes(t, db)
+
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1/votes/1", "bob", http.StatusForbidden)
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM votes WHERE poll_id = ? AND id = ?`, 1, 1).Scan(&count); err != nil {
+		t.Fatalf("count forbidden vote: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("unexpected vote count: got=%d want=1", count)
+	}
+}
+
+func scenarioDeleteVoteReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	seedVotes(t, db)
+
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/999/votes/1", "alice", http.StatusNotFound)
+	mustRequestNoBodyWithUser(t, http.MethodDelete, baseURL+"/api/polls/1/votes/999", "alice", http.StatusNotFound)
 }
 
 func startMySQL(t *testing.T, ctx context.Context) string {
