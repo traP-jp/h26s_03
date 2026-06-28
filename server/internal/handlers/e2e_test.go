@@ -292,7 +292,7 @@ func seedPollCreatedBy(t *testing.T, db *sqlx.DB, createdBy string) int64 {
 	return 1
 }
 
-func seedUser(t *testing.T, db *sqlx.DB, username string, balance int) {
+func seedUserBalance(t *testing.T, db *sqlx.DB, username string, balance int) {
 	t.Helper()
 
 	_, err := db.Exec(`INSERT INTO users (username, balance) VALUES (?, ?)`, username, balance)
@@ -415,7 +415,7 @@ func scenarioCreateVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	seedPoll(t, db)
-	seedUser(t, db, "alice", 100)
+	seedUserBalance(t, db, "alice", 100)
 
 	resp := mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
 
@@ -466,7 +466,7 @@ func scenarioCreateVoteReturnsConflict(t *testing.T, baseURL string, db *sqlx.DB
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	seedPoll(t, db)
-	seedUser(t, db, "alice", 300)
+	seedUserBalance(t, db, "alice", 300)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":2,"bet":200}`, http.StatusConflict)
 	if got := userBalance(t, db, "alice"); got != 200 {
@@ -479,7 +479,7 @@ func scenarioCreateVoteReturnsConflictWhenBalanceIsInsufficient(t *testing.T, ba
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
 	seedPoll(t, db)
-	seedUser(t, db, "alice", 99)
+	seedUserBalance(t, db, "alice", 99)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusConflict)
 	if got := userBalance(t, db, "alice"); got != 99 {
 		t.Fatalf("unexpected balance: got=%d want=99", got)
