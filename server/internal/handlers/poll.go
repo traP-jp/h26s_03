@@ -51,7 +51,45 @@ func (h *Handler) CreatePoll(ctx context.Context, req *openapi.CreatePollRequest
 		CreatedAt: createdAt,
 	}
 
+	if due.Valid {
+		h.schedulePollDueClose(poll.ID, due.Time)
+	}
+
 	return poll, nil
+}
+
+func (h *Handler) schedulePollDueClose(pollID int64, due time.Time) {
+	delay := time.Until(due)
+	if delay < 0 {
+		delay = 0
+	}
+
+	time.AfterFunc(delay, func() {
+		h.closePollIfDue(pollID)
+	})
+}
+
+func (h *Handler) closePollIfDue(pollID int64) {
+	if h.db == nil {
+		return
+	}
+
+	var (
+		due    sql.NullTime
+		result sql.NullInt64
+	)
+	if err := h.db.QueryRowxContext(
+		context.Background(),
+		`SELECT due, result FROM polls WHERE id = ?`,
+		pollID,
+	).Scan(&due, &result); err != nil {
+		return
+	}
+	if !due.Valid || result.Valid || time.Now().UTC().Before(due.Time.UTC()) {
+		return
+	}
+
+	h.broadcastPollClosed(pollID, nil)
 }
 
 func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest, params openapi.CreateVoteParams) (openapi.CreateVoteRes, error) {

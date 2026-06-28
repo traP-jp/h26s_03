@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -24,11 +23,23 @@ func TestBroadcastPollClosedBroadcastsToPollSubscribers(t *testing.T) {
 	poll42AnotherViewer := dialInternalWebSocket(t, baseURL, "42")
 	poll2Viewer := dialInternalWebSocket(t, baseURL, "2")
 
-	handler.broadcastPollClosed("42", 1)
+	handler.broadcastPollClosed(42, nil)
 
-	assertPollClosedWebSocketMessage(t, poll42Viewer, 42)
-	assertPollClosedWebSocketMessage(t, poll42AnotherViewer, 42)
+	assertPollClosedWebSocketMessage(t, poll42Viewer, 42, nil)
+	assertPollClosedWebSocketMessage(t, poll42AnotherViewer, 42, nil)
 	assertNoInternalWebSocketMessage(t, poll2Viewer)
+}
+
+func TestBroadcastPollClosedIncludesResult(t *testing.T) {
+	t.Parallel()
+
+	handler, baseURL := startInternalWebSocketTestServer(t)
+	viewer := dialInternalWebSocket(t, baseURL, "42")
+	result := 1
+
+	handler.broadcastPollClosed(42, &result)
+
+	assertPollClosedWebSocketMessage(t, viewer, 42, &result)
 }
 
 func startInternalWebSocketTestServer(t *testing.T) (*Handler, string) {
@@ -42,7 +53,7 @@ func startInternalWebSocketTestServer(t *testing.T) (*Handler, string) {
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
 
-	return handler, "ws" + strings.TrimPrefix(srv.URL, "http")
+	return handler, "ws" + srv.URL[len("http"):]
 }
 
 func dialInternalWebSocket(t *testing.T, baseURL string, pollID string) *websocket.Conn {
@@ -60,7 +71,7 @@ func dialInternalWebSocket(t *testing.T, baseURL string, pollID string) *websock
 	return conn
 }
 
-func assertPollClosedWebSocketMessage(t *testing.T, conn *websocket.Conn, pollID int64) {
+func assertPollClosedWebSocketMessage(t *testing.T, conn *websocket.Conn, pollID int64, wantResult *int) {
 	t.Helper()
 
 	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
@@ -82,15 +93,17 @@ func assertPollClosedWebSocketMessage(t *testing.T, conn *websocket.Conn, pollID
 	if message.Type != websocketMessageTypePollStatus {
 		t.Fatalf("unexpected message type: got=%s want=%s", message.Type, websocketMessageTypePollStatus)
 	}
-	wantPollID := fmt.Sprint(pollID)
-	if message.PollID != wantPollID {
-		t.Fatalf("unexpected poll_id: got=%s want=%s", message.PollID, wantPollID)
+	if message.PollID != pollID {
+		t.Fatalf("unexpected poll_id: got=%d want=%d", message.PollID, pollID)
 	}
 	if message.Status != pollStatusClosed {
 		t.Fatalf("unexpected status: got=%s want=%s", message.Status, pollStatusClosed)
 	}
-	if message.Result == nil || *message.Result != 1 {
-		t.Fatalf("unexpected result: got=%v want=1", message.Result)
+	if (message.Result == nil) != (wantResult == nil) {
+		t.Fatalf("unexpected result: got=%v want=%v", message.Result, wantResult)
+	}
+	if message.Result != nil && *message.Result != *wantResult {
+		t.Fatalf("unexpected result: got=%d want=%d", *message.Result, *wantResult)
 	}
 	if message.NotifiedAt.IsZero() {
 		t.Fatal("unexpected notified_at: zero")
@@ -103,7 +116,6 @@ func assertNoInternalWebSocketMessage(t *testing.T, conn *websocket.Conn) {
 	if err := conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
 		t.Fatalf("set read deadline: %v", err)
 	}
-
 	_, payload, err := conn.ReadMessage()
 	if err == nil {
 		t.Fatalf("unexpected websocket message: %s", string(payload))
