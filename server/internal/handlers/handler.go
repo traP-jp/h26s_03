@@ -131,10 +131,10 @@ func (h *Handler) UpdatePoll(ctx context.Context, req *openapi.UpdatePollRequest
 		return nil, err
 	}
 
-	user, ok := authx.UserFromRequestContext(ctx)
-	if !ok || user != current.CreatedBy {
-		return &openapi.UpdatePollForbidden{}, nil
-	}
+	 user, ok := authx.UserFromRequestContext(ctx)
+	 if !ok || user != current.CreatedBy {
+	 	return &openapi.UpdatePollForbidden{}, nil
+	 }
 
 	name := current.Name
 	if v, ok := req.Name.Get(); ok {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from "vue";
-import { useRoute, useRouter, RouterLink } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 
-import { getPoll, type Poll, getMe, updatePoll } from "../lib/api";
+import { getMe, getPoll, updatePoll, type Poll } from "../lib/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -26,6 +26,7 @@ const saveResult = async () => {
     return;
   }
   await updatePoll(pollId, selectedResult.value);
+
   router.push(`/polls/${pollId}`);
   console.log(selectedResult.value);
 };
