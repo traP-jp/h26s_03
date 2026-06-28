@@ -9,7 +9,7 @@
         <RouterLink
           :to="`/polls/${pollId}/input`"
           class="edit-link"
-          v-if="me?.username && me?.username === poll?.created_by"
+          v-if="me && me.username === poll?.created_by"
         >
           <EditIcon />
         </RouterLink>
@@ -409,7 +409,7 @@ const shareUrl = computed(() => {
 .choice-button {
   width: 100%;
   max-width: 280px;
-  min-height: 72px;
+  min-height: 50px;
   font-size: 20px;
   font-weight: 700;
   margin: 10px;

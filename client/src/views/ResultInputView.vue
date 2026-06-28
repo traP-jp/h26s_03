@@ -35,6 +35,12 @@ onMounted(async () => {
   const [pollData, meData] = await Promise.all([getPoll(pollId), getMe()]);
   poll.value = pollData;
   me.value = meData;
+  //完了動作確認用
+  //poll.value.result = null;
+  //ローディング動作確認用
+  loading.value = true;
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  loading.value = false;
   loading.value = false;
   console.log(poll.value);
 });
@@ -51,7 +57,7 @@ const selectResult = (result: number) => {
     <div class="background">
       <div class="result-input-page">
         <div v-if="loading" class="loading-component">
-          <div class="neon-ring"></div>
+          <div class="bouncing-dots"><span></span><span></span><span></span></div>
           <p class="loading-text">読み込み中…</p>
         </div>
         <div v-else>
@@ -145,8 +151,10 @@ h2 {
 }
 
 .choice-button {
-  width: 420px;
-  height: 50px;
+  max-width: 420px;
+  min-height: 50px;
+  font-size: 20px;
+  font-weight: 700;
   padding: 10px;
   margin-bottom: 10px;
   background: transparent;
@@ -228,47 +236,42 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 200 px;
 }
 
-.loading-component {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #0a0e27;
+.bouncing-dots {
+  display: inline-flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 20px;
 }
-
-.neon-ring {
-  width: 100px;
-  height: 100px;
-  border: 4px solid transparent;
+.bouncing-dots span {
+  width: 15px;
+  height: 15px;
+  background-color: #155efc7b;
   border-radius: 50%;
-  border-top-color: #0ff;
-  border-right-color: #0ff;
-  position: relative;
-  animation: spin 1.5s linear infinite;
-  filter: drop-shadow(0 0 10px #0ff) drop-shadow(0 0 20px #0ff);
+  animation: bounce 0.9s cubic-bezier(0.28, 0.84, 0.42, 1) infinite;
 }
-
-.neon-ring::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-bottom-color: #f0f;
-  border-left-color: #f0f;
-  animation: spin 1s linear infinite reverse;
-  filter: drop-shadow(0 0 10px #f0f) drop-shadow(0 0 20px #f0f);
+.bouncing-dots span:nth-child(2) {
+  animation-delay: 0.12s;
 }
-
-@keyframes spin {
+.bouncing-dots span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+@keyframes bounce {
   0% {
-    transform: rotate(0deg);
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
   100% {
-    transform: rotate(360deg);
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bouncing-dots span {
+    animation: none;
   }
 }
 
