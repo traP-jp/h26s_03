@@ -37,8 +37,6 @@ onMounted(() => {
         </div>
       </RouterLink>
 
-      <RouterLink class="more-button" to="/polls"> もっと見る > </RouterLink>
-
       <RouterLink class="polladd-button" to="/polls/create"> + 新しい投票を作成 </RouterLink>
     </div>
   </div>
@@ -91,24 +89,6 @@ h2 {
 }
 
 .poll-button:hover {
-  background: rgba(255, 255, 255, 0.103);
-}
-
-.more-button {
-  width: 420px;
-  height: 50px;
-  padding: 10px;
-  margin-top: 0px;
-  background: transparent;
-  color: #ffffff;
-  text-decoration: none;
-  text-align: center;
-  border: 2px solid #ffffff58;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.more-button:hover {
   background: rgba(255, 255, 255, 0.103);
 }
 
