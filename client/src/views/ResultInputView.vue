@@ -36,14 +36,7 @@ onMounted(async () => {
   const [pollData, meData] = await Promise.all([getPoll(pollId), getMe()]);
   poll.value = pollData;
   me.value = meData;
-  //完了動作確認用
-  //poll.value.result = null;
-  //ローディング動作確認用
-  loading.value = true;
-  await new Promise((resolve) => setTimeout(resolve, 2000));
   loading.value = false;
-  loading.value = false;
-  console.log(poll.value);
 });
 
 // 結果を選択する関数
