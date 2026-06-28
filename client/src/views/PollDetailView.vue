@@ -118,7 +118,6 @@
     <div v-else class="main-container">
       <p>{{ errorMessage }}</p>
     </div>
-    <button @click="showResultAnnouncement">結果発表</button>
   </div>
 </template>
 
