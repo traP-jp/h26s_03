@@ -44,6 +44,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioGetMeReturnsCurrentUser,
 		},
 		{
+			name: "get me creates missing user",
+			run:  scenarioGetMeCreatesMissingUser,
+		},
+		{
 			name: "get poll by id returns poll",
 			run:  scenarioGetPollByIDReturnsPoll,
 		},
@@ -156,7 +160,7 @@ func scenarioGetMeReturnsCurrentUser(t *testing.T, baseURL string, db *sqlx.DB) 
 	t.Helper()
 
 	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
-	seedUser(t, db, "alice", 1200)
+	seedUserBalance(t, db, "alice", 1200)
 
 	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/me", nil)
 	if err != nil {
@@ -188,6 +192,43 @@ func scenarioGetMeReturnsCurrentUser(t *testing.T, baseURL string, db *sqlx.DB) 
 	}
 	if out.Balance != 1200 {
 		t.Fatalf("unexpected balance: got=%d want=1200", out.Balance)
+	}
+}
+
+func scenarioGetMeCreatesMissingUser(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/me", nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set(authx.HeaderForwardedUser, "new-user")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request GET /api/me: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected me status: got=%d want=%d body=%s", resp.StatusCode, http.StatusOK, string(raw))
+	}
+
+	var out meResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode me: %v", err)
+	}
+	if out.Username != "new-user" {
+		t.Fatalf("unexpected username: got=%s want=new-user", out.Username)
+	}
+	if out.Balance != 1000 {
+		t.Fatalf("unexpected balance: got=%d want=1000", out.Balance)
+	}
+	if got := userBalance(t, db, "new-user"); got != 1000 {
+		t.Fatalf("unexpected persisted balance: got=%d want=1000", got)
 	}
 }
 
@@ -325,7 +366,7 @@ type voteResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func seedUser(t *testing.T, db *sqlx.DB, username string, balance int) {
+func seedUserBalance(t *testing.T, db *sqlx.DB, username string, balance int) {
 	t.Helper()
 
 	_, err := db.Exec(`INSERT INTO users (username, balance) VALUES (?, ?)`, username, balance)
@@ -359,15 +400,6 @@ func seedPollCreatedBy(t *testing.T, db *sqlx.DB, createdBy string) int64 {
 	}
 
 	return 1
-}
-
-func seedUserBalance(t *testing.T, db *sqlx.DB, username string, balance int) {
-	t.Helper()
-
-	_, err := db.Exec(`INSERT INTO users (username, balance) VALUES (?, ?)`, username, balance)
-	if err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
 }
 
 func userBalance(t *testing.T, db *sqlx.DB, username string) int {
