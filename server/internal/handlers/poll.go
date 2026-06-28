@@ -231,6 +231,43 @@ func (h *Handler) DeletePoll(ctx context.Context, params openapi.DeletePollParam
 	return &openapi.DeletePollNoContent{}, nil
 }
 
+func (h *Handler) DeleteVote(ctx context.Context, params openapi.DeleteVoteParams) (openapi.DeleteVoteRes, error) {
+	currentUser, ok := authx.UserFromRequestContext(ctx)
+	if !ok {
+		currentUser = anonymousUser
+	}
+
+	var username string
+	if err := h.db.QueryRowxContext(
+		ctx,
+		`SELECT username FROM votes WHERE poll_id = ? AND id = ?`,
+		params.PollID,
+		params.VoteID,
+	).Scan(&username); err != nil {
+		if err == sql.ErrNoRows {
+			return &openapi.DeleteVoteNotFound{}, nil
+		}
+		return nil, fmt.Errorf("get vote owner: %w", err)
+	}
+	if username != currentUser {
+		return &openapi.DeleteVoteForbidden{}, nil
+	}
+
+	result, err := h.db.ExecContext(ctx, `DELETE FROM votes WHERE poll_id = ? AND id = ?`, params.PollID, params.VoteID)
+	if err != nil {
+		return nil, fmt.Errorf("delete vote: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("get deleted vote count: %w", err)
+	}
+	if affected == 0 {
+		return &openapi.DeleteVoteNotFound{}, nil
+	}
+
+	return &openapi.DeleteVoteNoContent{}, nil
+}
+
 func nilInt() openapi.NilInt {
 	v := openapi.NilInt{}
 	v.SetToNull()

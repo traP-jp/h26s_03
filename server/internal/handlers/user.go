@@ -18,7 +18,10 @@ func (h *Handler) GetMe(ctx context.Context) (*openapi.Me, error) {
 	var balance int
 	if err := h.db.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
 		if err == sql.ErrNoRows {
-			return &openapi.Me{Username: username, Balance: 0}, nil
+			if _, err := h.db.ExecContext(ctx, `INSERT INTO users (username, balance) VALUES (?, ?)`, username, initialUserBalance); err != nil {
+				return nil, fmt.Errorf("create me: %w", err)
+			}
+			return &openapi.Me{Username: username, Balance: initialUserBalance}, nil
 		}
 		return nil, fmt.Errorf("get me: %w", err)
 	}
