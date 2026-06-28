@@ -383,10 +383,45 @@ components:
         username:
           type: string
           description: ユーザー名
+    PollStatus:
+      type: string
+      description: 投票ステータス
+      enum:
+        - open
+        - closed
+        - result_announced
+    PollStatusWebSocketMessage:
+      type: object
+      description: サーバーからクライアントへ送信される投票ステータス通知
+      required:
+        - type
+        - status
+        - result
+        - notified_at
+      properties:
+        type:
+          type: string
+          enum:
+            - poll_status
+        poll_id:
+          type: integer
+          format: int64
+          description: 投票ID
+        status:
+          $ref: '#/components/schemas/PollStatus'
+        result:
+          type: integer
+          nullable: true
+          description: 結果
+        notified_at:
+          type: string
+          format: date-time
+          description: 通知日時
     WebSocketMessage:
       oneOf:
         - $ref: '#/components/schemas/ReactionWebSocketMessage'
         - $ref: '#/components/schemas/VoteWebSocketMessage'
+        - $ref: '#/components/schemas/PollStatusWebSocketMessage'
 x-websocket-events:
   endpoint:
     path: /api/ws
@@ -400,3 +435,4 @@ x-websocket-events:
   messages:
     - $ref: '#/components/schemas/ReactionWebSocketMessage'
     - $ref: '#/components/schemas/VoteWebSocketMessage'
+    - $ref: '#/components/schemas/PollStatusWebSocketMessage'

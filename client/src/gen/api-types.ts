@@ -261,9 +261,33 @@ export interface components {
       /** @description ユーザー名 */
       username: string;
     };
+    /**
+     * @description 投票ステータス
+     * @enum {string}
+     */
+    PollStatus: "open" | "closed" | "result_announced";
+    /** @description サーバーからクライアントへ送信される投票ステータス通知 */
+    PollStatusWebSocketMessage: {
+      /** @enum {string} */
+      type: "poll_status";
+      /**
+       * Format: int64
+       * @description 投票ID
+       */
+      poll_id?: number;
+      status: components["schemas"]["PollStatus"];
+      /** @description 結果 */
+      result: number | null;
+      /**
+       * Format: date-time
+       * @description 通知日時
+       */
+      notified_at: string;
+    };
     WebSocketMessage:
       | components["schemas"]["ReactionWebSocketMessage"]
-      | components["schemas"]["VoteWebSocketMessage"];
+      | components["schemas"]["VoteWebSocketMessage"]
+      | components["schemas"]["PollStatusWebSocketMessage"];
   };
   responses: never;
   parameters: {
