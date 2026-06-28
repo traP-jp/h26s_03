@@ -227,7 +227,7 @@ export const handlers = [
     return response(200).json({ ...poll });
   }),
 
-  http.delete("/api/polls/{id}", ({ params, request, response }) => {
+  http.delete("/api/polls/{id}", ({ params, response }) => {
     const pollIndex = polls.findIndex((item) => item.id === Number(params.id));
     if (pollIndex < 0) {
       return response.untyped(jsonError("poll not found", 404));
@@ -300,7 +300,7 @@ export const handlers = [
     });
   }),
 
-  http.delete("/api/polls/{poll_id}/votes/{vote_id}", ({ params, request, response }) => {
+  http.delete("/api/polls/{poll_id}/votes/{vote_id}", ({ params, response }) => {
     const pollID = Number(params.poll_id);
     const voteID = Number(params.vote_id);
     const voteIndex = votes.findIndex((vote) => vote.poll_id === pollID && vote.id === voteID);
@@ -316,7 +316,7 @@ export const handlers = [
     return response(204).empty();
   }),
 
-  http.get("/api/me", ({ request, response }) => {
+  http.get("/api/me", ({ response }) => {
     const body: Me = {
       username: getUsername(),
       balance: 1000,

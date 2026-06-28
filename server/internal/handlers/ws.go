@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ type websocketMessageEnvelope struct {
 
 type pollStatusWebSocketMessage struct {
 	Type       string    `json:"type"`
-	PollID     string    `json:"poll_id"`
+	PollID     int64     `json:"poll_id"`
 	Status     string    `json:"status"`
 	Result     *int      `json:"result"`
 	NotifiedAt time.Time `json:"notified_at"`
@@ -71,7 +72,7 @@ var websocketUpgrader = websocket.Upgrader{
 	},
 }
 
-func (h *Handler) broadcastPollClosed(pollID string, result int) {
+func (h *Handler) broadcastPollClosed(pollID int64, result *int) {
 	if h.wsHub == nil {
 		return
 	}
@@ -80,14 +81,14 @@ func (h *Handler) broadcastPollClosed(pollID string, result int) {
 		Type:       websocketMessageTypePollStatus,
 		PollID:     pollID,
 		Status:     pollStatusClosed,
-		Result:     &result,
+		Result:     result,
 		NotifiedAt: time.Now().UTC(),
 	})
 	if err != nil {
 		return
 	}
 
-	h.wsHub.broadcastToPoll(pollID, websocket.TextMessage, payload)
+	h.wsHub.broadcastToPoll(fmt.Sprint(pollID), websocket.TextMessage, payload)
 }
 
 func (h *Handler) WebSocket(c echo.Context) error {
