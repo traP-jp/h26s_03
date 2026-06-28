@@ -140,8 +140,8 @@ const resetPolls = (): void => {
   nextVoteId = getNextVoteId(votes);
 };
 
-const getUsername = (request: Request): string => {
-  return request.headers.get("x-forwarded-user") ?? "developer";
+const getUsername = (): string => {
+  return import.meta.env.VITE_API_USER ?? "cp20";
 };
 
 const jsonError = (message: string, status: number) => {
@@ -184,7 +184,7 @@ export const handlers = [
       choice2: body.choice2,
       result: null,
       due: body.due ?? null,
-      created_by: getUsername(request),
+      created_by: getUsername(),
       created_at: new Date().toISOString(),
     };
 
@@ -208,7 +208,7 @@ export const handlers = [
     if (!poll) {
       return response.untyped(jsonError("poll not found", 404));
     }
-    if (poll.created_by !== getUsername(request)) {
+    if (poll.created_by !== getUsername()) {
       return response.untyped(jsonError("poll owner mismatch", 403));
     }
 
@@ -233,7 +233,7 @@ export const handlers = [
       return response.untyped(jsonError("poll not found", 404));
     }
     const poll = polls[pollIndex];
-    if (poll.created_by !== getUsername(request)) {
+    if (poll.created_by !== getUsername()) {
       return response.untyped(jsonError("poll owner mismatch", 403));
     }
 
@@ -275,7 +275,7 @@ export const handlers = [
     }
     const body = parsed.output;
 
-    const username = getUsername(request);
+    const username = getUsername();
     if (votes.some((vote) => vote.poll_id === pollID && vote.username === username)) {
       return response.untyped(jsonError("already voted", 409));
     }
@@ -308,7 +308,7 @@ export const handlers = [
     if (voteIndex < 0) {
       return response.untyped(jsonError("vote not found", 404));
     }
-    if (votes[voteIndex].username !== getUsername(request)) {
+    if (votes[voteIndex].username !== getUsername()) {
       return response.untyped(jsonError("vote owner mismatch", 403));
     }
 
@@ -318,7 +318,7 @@ export const handlers = [
 
   http.get("/api/me", ({ request, response }) => {
     const body: Me = {
-      username: getUsername(request),
+      username: getUsername(),
       balance: 1000,
     };
 
