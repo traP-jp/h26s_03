@@ -1,11 +1,13 @@
 import createClient from "openapi-fetch";
 
-import type { paths, components } from "../gen/api-types";
+import type { components, paths } from "../gen/api-types";
 
 type CreatePollRequest = components["schemas"]["CreatePollRequest"];
 export type Poll = components["schemas"]["Poll"];
 
-const client = createClient<paths>();
+const client = createClient<paths>({
+  baseUrl: import.meta.env.VITE_API_BASE,
+});
 
 function raiseApiError(error: unknown): never {
   if (error instanceof Error) {

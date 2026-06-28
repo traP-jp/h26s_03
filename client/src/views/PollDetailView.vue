@@ -1,5 +1,17 @@
 <template>
   <div class="page-container">
+    <div v-if="isResultAnnouncing" class="result-announcement-overlay">
+      <div class="result-announcement-card">
+        <p class="announcement-label">結果発表！</p>
+        <p class="announcement-winner">{{ winningChoiceName }} が勝利！</p>
+
+        <p v-if="isCorrectVote === true" class="announcement-correct">的中しました！</p>
+        <p v-else-if="isCorrectVote === false" class="announcement-incorrect">
+          的中しませんでした…
+        </p>
+        <p v-else class="announcement-none">投票していません</p>
+      </div>
+    </div>
     <div class="header">
       <RouterLink to="/" class="back-link"> < 戻る</RouterLink>
       <div class="header-icons">
@@ -110,6 +122,7 @@
 </template>
 
 <script setup lang="ts">
+import confetti from "@hiseb/confetti";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
@@ -124,7 +137,7 @@ const pollId = route.params.id as string;
 type Poll = components["schemas"]["Poll"];
 type Vote = components["schemas"]["Vote"];
 type Me = components["schemas"]["Me"];
-type VoteWebSocketMessage = components["schemas"]["VoteWebSocketMessage"];
+type WebSocketMessage = components["schemas"]["WebSocketMessage"];
 
 const poll = ref<Poll | null>(null);
 const votes = ref<Vote[]>([]);
@@ -132,6 +145,8 @@ const me = ref<Me | null>(null);
 const isLoading = ref(false);
 const errorMessage = ref("");
 const wsConnection = ref<WebSocket | null>(null);
+const isResultAnnouncing = ref(false);
+const announcementTimer = ref<number | null>(null);
 
 const collapsedAvatarLimit = 18;
 
@@ -271,18 +286,77 @@ const selectChoice = async (choice: number) => {
   }
 };
 
+const runConfetti = () => {
+  confetti({
+    position: {
+      x: window.innerWidth * 0.5,
+      y: window.innerHeight * 0.3,
+    }, // Origin position
+    count: 100, // Number of particles
+    size: 1, // Size of the particles
+    velocity: 200, // Initial particle velocity
+    fade: false, // Particles fall off the screen, or fade out
+  });
+
+  setTimeout(() => {
+    confetti({
+      position: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.3 }, // Origin position
+      count: 100, // Number of particles
+      size: 1, // Size of the particles
+      velocity: 200, // Initial particle velocity
+      fade: false, // Particles fall off the screen, or fade out
+    });
+  }, 300);
+
+  setTimeout(() => {
+    confetti({
+      position: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.3 }, // Origin position
+      count: 100, // Number of particles
+      size: 1, // Size of the particles
+      velocity: 200, // Initial particle velocity
+      fade: false, // Particles fall off the screen, or fade out
+    });
+  }, 600);
+};
+
+const showResultAnnouncement = () => {
+  isResultAnnouncing.value = true;
+  runConfetti();
+
+  if (announcementTimer.value !== null) {
+    window.clearTimeout(announcementTimer.value);
+  }
+
+  announcementTimer.value = window.setTimeout(() => {
+    isResultAnnouncing.value = false;
+    announcementTimer.value = null;
+  }, 2200);
+};
+
 const connectWebSocket = () => {
   try {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    // const wsUrl = `${protocol}//localhost:8080/api/ws?poll_id=${pollId}`;
-    const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
+    const wsUrl = `${protocol}//localhost:8080/api/ws?poll_id=${pollId}`;
+    //const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
     wsConnection.value = new WebSocket(wsUrl);
     wsConnection.value.onmessage = (event: MessageEvent) => {
       try {
         console.log(event.data);
-        const message: VoteWebSocketMessage = JSON.parse(event.data);
+        const message: WebSocketMessage = JSON.parse(event.data);
         if (message.type === "vote") {
           fetchVoteList();
+        }
+        if (message.type === "poll_status") {
+          if (poll.value && message?.poll_id === Number(pollId)) {
+            poll.value = {
+              ...poll.value,
+              result: message.result,
+            };
+            fetchPageData();
+            if (message.result === 1 || message.result === 2) {
+              showResultAnnouncement();
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -305,6 +379,11 @@ const disconnectWebSocket = () => {
   if (wsConnection.value) {
     wsConnection.value.close();
     wsConnection.value = null;
+  }
+
+  if (announcementTimer.value !== null) {
+    window.clearTimeout(announcementTimer.value);
+    announcementTimer.value = null;
   }
 };
 
@@ -454,7 +533,7 @@ const shareUrl = computed(() => {
 .choice-button.selected.loser {
   background: #1f2937;
   color: #9ca3af;
-  border-color: #4b5563;
+  border-color: hsl(215, 14%, 34%);
   opacity: 0.75;
 }
 
@@ -619,6 +698,103 @@ const shareUrl = computed(() => {
 
   .avatar-container {
     max-width: 280px;
+  }
+}
+.result-announcement-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+
+  background: rgba(15, 23, 43, 0.72);
+  backdrop-filter: blur(6px);
+
+  animation: overlay-fade-in 0.2s ease-out;
+}
+
+.result-announcement-card {
+  width: min(420px, 92vw);
+  padding: 32px 30px 28px;
+  border-radius: 20px;
+
+  background: #f8fafc;
+  color: #0f172a;
+
+  border: 1px solid #e2e8f0;
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(15, 23, 42, 0.12);
+
+  text-align: center;
+  animation: result-card-pop 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.announcement-label {
+  margin: 0 0 10px;
+  color: #334155;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.announcement-winner {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(34px, 7vw, 48px);
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.announcement-correct {
+  color: #16a34a;
+}
+
+.announcement-incorrect {
+  color: #dc2626;
+}
+
+.announcement-none {
+  color: #64748b;
+}
+
+.result-announcement-card.correct {
+  border-top: 6px solid #22c55e;
+}
+
+.result-announcement-card.incorrect {
+  border-top: 6px solid #ef4444;
+}
+
+.result-announcement-card.none {
+  border-top: 6px solid #94a3b8;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes result-card-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(18px);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.03) translateY(0);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 </style>
