@@ -256,7 +256,7 @@ const selectChoice = async (choice: number) => {
       await deleteVote(Number(pollId), myVote.value.id);
     }
 
-    await createVote(Number(pollId), choice, 1); //最後の引数は仮のbet
+    await createVote(Number(pollId), choice, 0);
     sendVoteWebSocketMessage();
     await fetchVoteList();
   } catch (error) {
@@ -269,7 +269,7 @@ const connectWebSocket = () => {
   try {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     // const wsUrl = `${protocol}//localhost:8080/api/ws?poll_id=${pollId}`;
-    const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
+     const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
     wsConnection.value = new WebSocket(wsUrl);
     wsConnection.value.onmessage = (event: MessageEvent) => {
       try {
