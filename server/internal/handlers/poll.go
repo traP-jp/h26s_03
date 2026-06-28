@@ -59,8 +59,18 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 		username = anonymousUser
 	}
 
+	if req.Choice != 1 && req.Choice != 2 {
+		return &openapi.CreateVoteBadRequest{}, nil
+	}
+
+	tx, err := h.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin create vote transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	var exists int
-	if err := h.db.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM polls WHERE id = ?)`, params.ID).Scan(&exists); err != nil {
+	if err := tx.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM polls WHERE id = ?)`, params.ID).Scan(&exists); err != nil {
 		return nil, fmt.Errorf("check poll exists: %w", err)
 	}
 	if exists == 0 {
@@ -68,7 +78,7 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 	}
 
 	var alreadyVoted int
-	if err := h.db.QueryRowxContext(
+	if err := tx.QueryRowxContext(
 		ctx,
 		`SELECT EXISTS(SELECT 1 FROM votes WHERE poll_id = ? AND username = ?)`,
 		params.ID,
@@ -80,27 +90,24 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 		return &openapi.CreateVoteConflict{}, nil
 	}
 
-	if req.Choice != 1 && req.Choice != 2 {
-		return &openapi.CreateVoteBadRequest{}, nil
-	}
-
-
 	var balance int
-	if err := h.db.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
+	if err := tx.QueryRowxContext(ctx, `SELECT balance FROM users WHERE username = ? FOR UPDATE`, username).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			if username == anonymousUser {
-				return &openapi.CreateVoteConflict{}, nil
-			}
+			return &openapi.CreateVoteConflict{}, nil
 		}
-		balance = 0
+		return nil, fmt.Errorf("get user balance: %w", err)
 	}
 
-	if req.Bet != 0 && balance < req.Bet {
+	if balance < req.Bet {
 		return &openapi.CreateVoteConflict{}, nil
 	}
 
 	createdAt := time.Now().UTC()
-	result, err := h.db.ExecContext(ctx, `
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET balance = balance - ? WHERE username = ?`, req.Bet, username); err != nil {
+		return nil, fmt.Errorf("update user balance: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO votes (poll_id, username, choice, bet, created_at)
 		VALUES (?, ?, ?, ?, ?)
 	`, params.ID, username, req.Choice, req.Bet, createdAt)
@@ -120,6 +127,10 @@ func (h *Handler) CreateVote(ctx context.Context, req *openapi.CreateVoteRequest
 	id, err := result.LastInsertId()
 	if err != nil {
 		return nil, fmt.Errorf("get created vote id: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit create vote transaction: %w", err)
 	}
 
 	return &openapi.Vote{

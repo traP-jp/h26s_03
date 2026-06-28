@@ -72,6 +72,10 @@ func TestAPIEndToEndWithMySQLContainer(t *testing.T) {
 			run:  scenarioCreateVoteReturnsConflict,
 		},
 		{
+			name: "create vote returns conflict when balance is insufficient",
+			run:  scenarioCreateVoteReturnsConflictWhenBalanceIsInsufficient,
+		},
+		{
 			name: "delete poll succeeds",
 			run:  scenarioDeletePollSucceeds,
 		},
@@ -293,6 +297,16 @@ func seedUser(t *testing.T, db *sqlx.DB, username string, balance int) {
 	}
 }
 
+func userBalance(t *testing.T, db *sqlx.DB, username string) int {
+	t.Helper()
+
+	var balance int
+	if err := db.QueryRow(`SELECT balance FROM users WHERE username = ?`, username).Scan(&balance); err != nil {
+		t.Fatalf("get user balance: %v", err)
+	}
+	return balance
+}
+
 func scenarioPatchPollUpdatesSelectedFields(t *testing.T, baseURL string, db *sqlx.DB) {
 	t.Helper()
 
@@ -411,6 +425,9 @@ func scenarioCreateVoteSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
 	if out.CreatedAt.IsZero() {
 		t.Fatalf("unexpected created_at: zero")
 	}
+	if got := userBalance(t, db, "alice"); got != 0 {
+		t.Fatalf("unexpected balance: got=%d want=0", got)
+	}
 }
 
 func scenarioCreateVoteReturnsNotFound(t *testing.T, baseURL string, db *sqlx.DB) {
@@ -428,6 +445,21 @@ func scenarioCreateVoteReturnsConflict(t *testing.T, baseURL string, db *sqlx.DB
 	seedUser(t, db, "alice", 300)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusCreated)
 	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":2,"bet":200}`, http.StatusConflict)
+	if got := userBalance(t, db, "alice"); got != 200 {
+		t.Fatalf("unexpected balance: got=%d want=200", got)
+	}
+}
+
+func scenarioCreateVoteReturnsConflictWhenBalanceIsInsufficient(t *testing.T, baseURL string, db *sqlx.DB) {
+	t.Helper()
+
+	mustRequestNoBody(t, http.MethodPost, baseURL+"/api/initialize", http.StatusNoContent)
+	seedPoll(t, db)
+	seedUser(t, db, "alice", 99)
+	mustRequestJSONWithUser(t, http.MethodPost, baseURL+"/api/polls/1/votes", "alice", `{"choice":1,"bet":100}`, http.StatusConflict)
+	if got := userBalance(t, db, "alice"); got != 99 {
+		t.Fatalf("unexpected balance: got=%d want=99", got)
+	}
 }
 
 func scenarioDeletePollSucceeds(t *testing.T, baseURL string, db *sqlx.DB) {
