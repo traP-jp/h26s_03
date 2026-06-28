@@ -310,23 +310,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disconnectWebSocket();
 });
-
-const mockUsernames = ["cp20", "renkon", "nature36", "msk", "azukimaru", "Ayuto1123"];
-
-const addMockVotesForPreview = async () => {
-  // これは開発確認用
-  for (const [index, username] of mockUsernames.entries()) {
-    const choice = index % 2 === 0 ? 1 : 2;
-
-    votes.value.push({
-      id: Date.now() + index,
-      username,
-      choice,
-      bet: 1,
-      created_at: new Date().toISOString(),
-    });
-  }
-};
 </script>
 
 <style scoped>
