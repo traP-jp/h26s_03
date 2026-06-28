@@ -12,54 +12,74 @@
       <h1>{{ poll?.name }}</h1>
     </div>
     <div v-if="poll" class="main-container">
-      <div class="select-container">
-        <button
-          type="button"
-          class="choice-button"
-          @click="selectChoice(1)"
-          :class="{
-            selected: myVote?.choice === 1,
-            winner: poll?.result === 1,
-            loser: hasResult && poll?.result !== 1,
-          }"
-          :disabled="isClosed || hasResult"
-        >
-          {{ poll?.choice1 }}
-        </button>
-        <div class="avatar-container">
-          <img
-            v-for="vote in choice1Votes"
-            :key="vote.id"
-            class="avatar"
-            :data-name="vote.username"
-            :title="vote.username"
-            :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
-          />
+      <div class="choices-container">
+        <div class="select-container">
+          <button
+            type="button"
+            class="choice-button"
+            @click="selectChoice(1)"
+            :class="{
+              selected: myVote?.choice === 1,
+              winner: poll?.result === 1,
+              loser: hasResult && poll?.result !== 1,
+            }"
+            :disabled="isClosed || hasResult"
+          >
+            {{ poll?.choice1 }}
+          </button>
+          <TransitionGroup name="avatar-pop" tag="div" class="avatar-container">
+            <img
+              v-for="vote in visibleChoice1Votes"
+              :key="vote.id"
+              class="avatar"
+              :class="{ expanded: isChoice1Expanded }"
+              :data-name="vote.username"
+              :title="vote.username"
+              :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
+            />
+            <button
+              class="expand-button"
+              @click="toggleChoice1Avatars"
+              v-if="hiddenChoice1VoteCount > 0"
+              key="choice1-expand-button"
+            >
+              {{ isChoice1Expanded ? "−" : `+${hiddenChoice1VoteCount}` }}
+            </button>
+          </TransitionGroup>
         </div>
-      </div>
-      <div class="select-container">
-        <button
-          type="button"
-          class="choice-button"
-          @click="selectChoice(2)"
-          :class="{
-            selected: myVote?.choice === 2,
-            winner: poll?.result === 2,
-            loser: hasResult && poll?.result !== 2,
-          }"
-          :disabled="isClosed || hasResult"
-        >
-          {{ poll?.choice2 }}
-        </button>
-        <div class="avatar-container">
-          <img
-            v-for="vote in choice2Votes"
-            :key="vote.id"
-            :data-name="vote.username"
-            :title="vote.username"
-            :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
-            class="avatar"
-          />
+        <div class="select-container">
+          <button
+            type="button"
+            class="choice-button"
+            @click="selectChoice(2)"
+            :class="{
+              selected: myVote?.choice === 2,
+              winner: poll?.result === 2,
+              loser: hasResult && poll?.result !== 2,
+            }"
+            :disabled="isClosed || hasResult"
+          >
+            {{ poll?.choice2 }}
+          </button>
+          <TransitionGroup name="avatar-pop" tag="div" class="avatar-container">
+            <img
+              v-for="vote in visibleChoice2Votes"
+              :key="vote.id"
+              :data-name="vote.username"
+              :title="vote.username"
+              :src="`https://image-proxy.trap.jp/icon/${vote.username}?width=64&height=64`"
+              class="avatar"
+              :class="{ expanded: isChoice2Expanded }"
+            />
+            <button
+              class="expand-button"
+              @click="toggleChoice2Avatars"
+              v-if="hiddenChoice2VoteCount > 0"
+              key="choice2-expand-button"
+            >
+              {{ isChoice2Expanded ? "−" : `+${hiddenChoice2VoteCount}` }}
+            </button>
+          </TransitionGroup>
         </div>
       </div>
       <div class="meta">
@@ -85,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import EditIcon from "../components/EditIcon.vue";
@@ -98,13 +118,19 @@ const pollId = route.params.id as string;
 type Poll = components["schemas"]["Poll"];
 type Vote = components["schemas"]["Vote"];
 type Me = components["schemas"]["Me"];
+type VoteWebSocketMessage = components["schemas"]["VoteWebSocketMessage"];
 
 const poll = ref<Poll | null>(null);
 const votes = ref<Vote[]>([]);
 const me = ref<Me | null>(null);
 const isLoading = ref(false);
 const errorMessage = ref("");
+const wsConnection = ref<WebSocket | null>(null);
 
+const collapsedAvatarLimit = 18;
+
+const isChoice1Expanded = ref(false);
+const isChoice2Expanded = ref(false);
 const choice1Votes = computed(() => votes.value.filter((vote) => vote.choice === 1));
 const choice2Votes = computed(() => votes.value.filter((vote) => vote.choice === 2));
 
@@ -134,6 +160,54 @@ const myVote = computed(() => {
 
   return votes.value.find((vote) => vote.username === me.value!.username) ?? null;
 });
+
+const visibleChoice1Votes = computed(() => {
+  if (isChoice1Expanded.value) {
+    return choice1Votes.value;
+  }
+
+  return choice1Votes.value.slice(0, collapsedAvatarLimit);
+});
+
+const visibleChoice2Votes = computed(() => {
+  if (isChoice2Expanded.value) {
+    return choice2Votes.value;
+  }
+
+  return choice2Votes.value.slice(0, collapsedAvatarLimit);
+});
+
+const hiddenChoice1VoteCount = computed(() => {
+  return Math.max(choice1Votes.value.length - collapsedAvatarLimit, 0);
+});
+
+const hiddenChoice2VoteCount = computed(() => {
+  return Math.max(choice2Votes.value.length - collapsedAvatarLimit, 0);
+});
+
+const toggleChoice1Avatars = () => {
+  isChoice1Expanded.value = !isChoice1Expanded.value;
+};
+
+const toggleChoice2Avatars = () => {
+  isChoice2Expanded.value = !isChoice2Expanded.value;
+};
+
+const sendVoteWebSocketMessage = () => {
+  if (!wsConnection.value) return;
+
+  if (wsConnection.value.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket is not open");
+    return;
+  }
+
+  wsConnection.value.send(
+    JSON.stringify({
+      type: "vote",
+      poll_id: String(pollId),
+    }),
+  );
+};
 
 const fetchVoteList = async () => {
   const data = await getVotes(Number(pollId));
@@ -183,14 +257,58 @@ const selectChoice = async (choice: number) => {
     }
 
     await createVote(Number(pollId), choice, 1); //最後の引数は仮のbet
+    sendVoteWebSocketMessage();
     await fetchVoteList();
   } catch (error) {
     console.error("Error creating vote:", error);
+    alert("投票に失敗しました。もう一度試してください。");
+  }
+};
+
+const connectWebSocket = () => {
+  try {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    // const wsUrl = `${protocol}//localhost:8080/api/ws?poll_id=${pollId}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/ws?poll_id=${pollId}`;
+    wsConnection.value = new WebSocket(wsUrl);
+    wsConnection.value.onmessage = (event: MessageEvent) => {
+      try {
+        console.log(event.data);
+        const message: VoteWebSocketMessage = JSON.parse(event.data);
+        if (message.type === "vote") {
+          fetchVoteList();
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+      }
+    };
+
+    wsConnection.value.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    wsConnection.value.onclose = () => {
+      console.log("WebSocket closed");
+    };
+  } catch (error) {
+    console.error("Failed to connect WebSocket:", error);
+  }
+};
+
+const disconnectWebSocket = () => {
+  if (wsConnection.value) {
+    wsConnection.value.close();
+    wsConnection.value = null;
   }
 };
 
 onMounted(() => {
   fetchPageData();
+  connectWebSocket();
+});
+
+onBeforeUnmount(() => {
+  disconnectWebSocket();
 });
 </script>
 
@@ -226,10 +344,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin-top: 20px;
   padding: 20px;
 }
+
+.choices-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  width: 100%;
+  max-width: 760px;
+  align-items: start;
+}
+
 .select-container {
   display: flex;
   flex-direction: column;
@@ -337,17 +465,78 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   margin-top: 10px;
+  flex-wrap: wrap;
+  max-width: 320px;
+  min-height: 44px;
+  margin: 10px auto 0;
+}
+.avatar-container.expanded {
+  max-width: 320px;
+}
+.expand-button {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #334155;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+}
+.expand-button:hover {
+  background: #475569;
 }
 .avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  margin: 0 5px;
+  margin: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+}
+
+.avatar-pop-enter-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.avatar-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.4) translateY(8px);
+}
+
+.avatar-pop-enter-to {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.avatar-pop-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.avatar-pop-leave-from {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.avatar-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+.avatar-pop-move {
+  transition: transform 0.25s ease;
 }
 .meta {
   margin-top: 32px;
@@ -363,5 +552,21 @@ onMounted(() => {
   color: #6b7280;
   font-size: 14px;
   font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .choices-container {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    max-width: 360px;
+  }
+
+  .choice-button {
+    max-width: 280px;
+  }
+
+  .avatar-container {
+    max-width: 280px;
+  }
 }
 </style>
