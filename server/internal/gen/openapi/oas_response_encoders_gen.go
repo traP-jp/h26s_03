@@ -37,6 +37,11 @@ func encodeCreateVoteResponse(response CreateVoteRes, w http.ResponseWriter, spa
 
 		return nil
 
+	case *CreateVoteBadRequest:
+		w.WriteHeader(400)
+
+		return nil
+
 	case *CreateVoteNotFound:
 		w.WriteHeader(404)
 
